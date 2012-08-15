@@ -1,0 +1,20 @@
+{
+    "name": "wp/recordsman",
+    "type": "library",
+    "license": "MIT",
+    "description": "Simple ORM PHP library (ActiveRecord based)",
+    "keywords": ["db", "orm", "recordsman", "activerecord"],
+    "homepage": "https://github.com/webproducer/recordsman",
+    "authors": [
+        {
+            "name": "Alexander Safronov",
+            "email": "safron@webproducers.ru"
+        }
+    ],
+    "require": {
+        "php": ">=5.4.0"
+    },
+    "autoload": {
+        "psr-0": { "RecordsMan": "src/" }
+    }
+}
