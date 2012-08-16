@@ -122,6 +122,15 @@ abstract class Record {
         return empty($rows) ? [] : $rows;
     }
 
+    //TODO: tests
+    public static function count($condition = null) {
+        $sql = Helper::createCountQuery(
+            self::getLoader()->getClassTableName(get_called_class()),
+            $condition
+        );
+        return intval(self::getAdapter()->fetchSingleValue($sql));
+    }
+
 
     ////////// Triggers
 

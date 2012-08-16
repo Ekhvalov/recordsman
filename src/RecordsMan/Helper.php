@@ -46,12 +46,12 @@ class Helper {
         return $class;
     }
 
-    public static function createSelectQuery($tableName, $condition = null, $order = null, $limit = null) {
-        $sql = "SELECT * FROM `{$tableName}` ";
+    public static function createSelectParams($condition = null, $order = null, $limit = null) {
+        $sql = "";
         if (!is_null($condition)) {
-            $sql.= "WHERE " . Condition::create($condition)->toSql();
+            $sql.= " WHERE " . Condition::create($condition)->toSql();
         } else {
-            $sql.= "WHERE 1";
+            $sql.= " WHERE 1";
         }
         if ($order) {
             $sql.= " ORDER BY " . Helper::orderToSql($order);
@@ -62,19 +62,21 @@ class Helper {
         return $sql;
     }
 
+    public static function createCountQuery($tableName, $condition = null) {
+        $sql = "SELECT COUNT(*) FROM `{$tableName}` ";
+        $sql.= self::createSelectParams($condition);
+        return $sql;
+    }
+
+    public static function createSelectQuery($tableName, $condition = null, $order = null, $limit = null) {
+        $sql = "SELECT * FROM `{$tableName}`";
+        $sql.= self::createSelectParams($condition, $order, $limit);
+        return $sql;
+    }
+
     public static function createSelectJoinQuery($targetTab, $joinedTab, $foreignKey, $condition = null, $order = null, $limit = null) {
         $sql = "SELECT a.* FROM `{$targetTab}` AS a JOIN `{$joinedTab}` AS b ON a.`id`=b.`{$foreignKey}` ";
-        if (!is_null($condition)) {
-            $sql.= "WHERE " . Condition::create($condition)->toSql();
-        } else {
-            $sql.= "WHERE 1";
-        }
-        if ($order) {
-            $sql.= " ORDER BY " . Helper::orderToSql($order);
-        }
-        if ($limit) {
-            $sql.= " LIMIT " . Helper::limitToSql($limit);
-        }
+        $sql.= self::createSelectParams($condition, $order, $limit);
         return $sql;
     }
 
