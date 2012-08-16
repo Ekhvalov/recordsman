@@ -62,12 +62,13 @@ abstract class Record {
     }
 
     /**
-     * Finds & returns all records in table. Shortcut for find() [without params]
+     * Finds & returns all records in table. Shortcut for find(null, $order)
      *
+     * @param array|string $order String, containing field name to ascending ordering, or array like ['title' => 'ASC', 'price' => 'DESC']
      * @return RecordSet
      */
-    public static function all() {
-        return static::find();
+    public static function all($order = null) {
+        return static::find(null, $order);
     }
 
     /**
