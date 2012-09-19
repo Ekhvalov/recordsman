@@ -194,8 +194,16 @@ abstract class Record {
         return self::getLoader()->isFieldExists($this->_getContext(), $fieldName);
     }
 
-    public function toArray() {
-        return $this->_fields;
+    //TODO: tests
+    public function toArray($neededFields = []) {
+        if (empty($neededFields)) {
+            return $this->_fields;
+        }
+        $res = [];
+        foreach($neededFields as $fieldName) {
+            $res[$fieldName] = (array_key_exists($fieldName, $this->_fields)) ? $this->_fields[$fieldName] : null;
+        }
+        return $res;
     }
 
     public function isMatch($condition) {

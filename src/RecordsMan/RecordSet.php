@@ -92,6 +92,16 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
         return ($this->count() == 0);
     }
 
+    //TODO: tests
+    public function toArray($neededFields = []) {
+        $this->_loadRecords();
+        $res = [];
+        foreach($this->_records as $item) {
+            $res[] = $item->toArray($neededFields);
+        }
+        return $res;
+    }
+
 
     ////////// Countable implementation
 
