@@ -245,7 +245,9 @@ abstract class Record {
         }
         if ($thisId) {
             // updating existing entry
-            //TODO: `updated_at` autofill
+            if ($this->hasOwnField('updated_at')) {
+                $this->updated_at = time();
+            }
             $sqlParams = [];
             $sql = "UPDATE `{$tableName}` SET ";
             foreach($actualFields as $fieldName => $value) {
@@ -258,7 +260,9 @@ abstract class Record {
             return $this;
         }
         // creating new entry
-        //TODO: `created_at` autofill
+        if ($this->hasOwnField('created_at')) {
+            $this->created_at = time();
+        }
         self::getAdapter()->insert($tableName, $actualFields);
         $this->_fields['id'] = self::getAdapter()->getLastInsertId();
         $this->_updateRelatedCounters();
