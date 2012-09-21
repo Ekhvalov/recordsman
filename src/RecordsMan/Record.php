@@ -246,7 +246,7 @@ abstract class Record {
         if ($thisId) {
             // updating existing entry
             if ($this->hasOwnField('updated_at')) {
-                $actualFields['updated_at'] = time();
+                $this->_fields['updated_at'] = $actualFields['updated_at'] = time();
             }
             $sqlParams = [];
             $sql = "UPDATE `{$tableName}` SET ";
@@ -261,7 +261,7 @@ abstract class Record {
         }
         // creating new entry
         if ($this->hasOwnField('created_at')) {
-            $actualFields['created_at'] = time();
+            $this->_fields['created_at'] = $actualFields['created_at'] = time();
         }
         self::getAdapter()->insert($tableName, $actualFields);
         $this->_fields['id'] = self::getAdapter()->getLastInsertId();
