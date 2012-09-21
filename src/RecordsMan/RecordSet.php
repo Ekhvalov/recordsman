@@ -77,6 +77,7 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
         $relationParams = $loader->getClassRelationParamsWith($initiatorClass, $thisClass);
         if (isset($relationParams['through'])) {
             // Many-to-many relation
+            //TODO: tests
             $throughClass = $relationParams['through'];
             $this_through_Relation = $loader->getClassRelationParamsWith($thisClass, $throughClass);
             $initiator_through_Relation = $loader->getClassRelationParamsWith($initiatorClass, $throughClass);
@@ -116,8 +117,17 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
 
     public function filter($conditionOrCallback) {
         $this->_loadRecords();
-        return ($conditionOrCallback instanceof \Closure) ? $this->_filterByCallback($conditionOrCallback)
-                                                          : $this->_filterByCondition($conditionOrCallback);
+        return ($conditionOrCallback instanceof \Closure)
+            ? $this->_filterByCallback($conditionOrCallback)
+            : $this->_filterByCondition($conditionOrCallback);
+    }
+
+    //TODO: tests
+    public function filterFirst($conditionOrCallback) {
+        $this->_loadRecords();
+        return ($conditionOrCallback instanceof \Closure)
+            ? $this->_filterByCallback($conditionOrCallback, true)
+            : $this->_filterByCondition($conditionOrCallback, true);
     }
 
     public function isEmpty() {
@@ -269,10 +279,13 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
         return $this->_loadingParams['count'];
     }
 
-    private function _filterByCallback(\Closure $callback) {
-        $newSet = $this->_newSelf();
+    private function _filterByCallback(\Closure $callback, $first = false) {
+        $newSet = $first ? null : $this->_newSelf();
         foreach($this->_records as $record) {
             if (call_user_func($callback->bindTo($record))) {
+                if ($first) {
+                    return $record;
+                }
                 $newSet->_records[] = $record;
             }
         }
@@ -280,10 +293,13 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
         return $newSet;
     }
 
-    private function _filterByCondition($condition) {
-        $newSet = $this->_newSelf();
+    private function _filterByCondition($condition, $first = false) {
+        $newSet = $first ? null : $this->_newSelf();
         foreach($this->_records as $record) {
             if ($record->isMatch($condition)) {
+                if ($first) {
+                    return $record;
+                }
                 $newSet->_records[] = $record;
             }
         }
