@@ -18,12 +18,20 @@ class ComparsionCondition extends Condition {
     }
 
     public function compile() {
-        $op2 = $this->_escape($this->_op2);
+        if ($this->_sign != ':') {
+            $op2 = $this->_escape($this->_op2);
+        } else {
+            $op2 = $this->_parseAndEscapeBlock($this->_op2);
+        }
         switch($this->_sign) {
             case '!':
                 return "(`{$this->_op1}`<>{$op2})";
             case '~':
                 return "(`{$this->_op1}` LIKE {$op2})";
+            case '!~':
+                return "(`{$this->_op1}` NOT LIKE {$op2})";
+            case ':':
+                return "(`{$this->_op1}` IN (" . implode(',', $op2) . "))";
             default:
                 return "(`{$this->_op1}`{$this->_sign}{$op2})";
         }
@@ -48,11 +56,23 @@ class ComparsionCondition extends Condition {
                 return ($itemValue >= $this->_op2);
             case '<=':
                 return ($itemValue <= $this->_op2);
+            case ':':
+                return $this->_testInCond($itemValue);
             case '~':
                 return $this->_testLikeCond($itemValue);
+            case '!~':
+                return $this->_testLikeCond($itemValue, true);
             default:
                 return false;
         }
+    }
+
+    private function _trimQuotes($value) {
+        $ret = trim($value);
+        if (preg_match('/^\'(?P<value>.*)\'$/', $ret, $matches)) {
+            $ret = $matches['value'];
+        }
+        return $ret;
     }
 
     private function _escape($value) {
@@ -64,7 +84,13 @@ class ComparsionCondition extends Condition {
         return "'{$value}'";
     }
 
-    private function _testLikeCond($value) {
+    private function _parseAndEscapeBlock($value) {
+        return array_map(function($item) {
+            return $this->_escape($this->_trimQuotes($item));
+        }, explode(',', trim($value, ' []')));
+    }
+
+    private function _testLikeCond($value, $notLike = false) {
         $escapeChars = ['(', ')', '@', '[', ']', '^', '$', '*', '.', '?', '+'];
         $pattern = $this->_op2;
         foreach($escapeChars as $char) {
@@ -72,12 +98,22 @@ class ComparsionCondition extends Condition {
         }
         $pattern = str_replace('%', '.*', $pattern);
         $pattern = "@^{$pattern}$@ui";
-        return !!preg_match($pattern, $value);
+        return $notLike ? !preg_match($pattern, $value) : !!preg_match($pattern, $value);
+    }
+
+    private function _testInCond($value) {
+        $checkValues = explode(',', trim($this->_op2, ' []'));
+        foreach($checkValues as $check) {
+            if ($value == $this->_trimQuotes($check)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static function _parseOperands($conditionString) {
         $matches = [];
-        $pattern = '/^(?<op1>\w+)\s*(?<sign>(>=)|(<=)|([=!><~]))\s*\'?(?<op2>.*?)\'?$/';
+        $pattern = '/^(?<op1>\w+)\s*(?<sign>(>=)|(<=)|(!~)|([:=!><~]))\s*\'?(?<op2>.*?)\'?$/';
         if (preg_match($pattern, $conditionString, $matches)) {
             return new self($matches['op1'], $matches['op2'], $matches['sign']);
         }
