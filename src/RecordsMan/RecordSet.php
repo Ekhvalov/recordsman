@@ -67,6 +67,9 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
         }
         $entry = $entries;
         $initiator = $this->_loadingParams['initiator'];
+        if (!$initiator->get('id')) {
+            $initiator->save();
+        }
         $thisClass = $this->_loadingParams['class'];
         $initiatorClass = Helper::qualifyClassName(get_class($initiator));
         $relationType = Record::getLoader()->getClassRelationTypeWith($initiatorClass, $thisClass);
