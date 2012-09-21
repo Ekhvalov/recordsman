@@ -17,6 +17,7 @@ class ComparsionCondition extends Condition {
         $this->_sign = $sign;
     }
 
+    //TODO: '!~' & ':' operators test
     public function compile() {
         if ($this->_sign != ':') {
             $op2 = $this->_escape($this->_op2);
@@ -37,6 +38,7 @@ class ComparsionCondition extends Condition {
         }
     }
 
+    //TODO: '!~' & ':' operators test
     public function test($item) {
         $item = $this->_argToArray($item);
         if (!isset($item[$this->_op1])) {

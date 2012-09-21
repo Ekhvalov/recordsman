@@ -73,12 +73,44 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
         if ($relationType != Record::RELATION_MANY) {
             throw new RecordsManException("Class {$initiatorClass} hasn't HAS_MANY relation with {$thisClass}", 65);
         }
-        $relationParams = Record::getLoader()->getClassRelationParamsWith($initiatorClass, $thisClass);
-        $entry->set($relationParams['foreignKey'], $initiator->get('id'))->save();
-        if ($this->_loadingParams['loaded']) {
-            $this->_records[] = $entry;
+        $loader = Record::getLoader();
+        $relationParams = $loader->getClassRelationParamsWith($initiatorClass, $thisClass);
+        if (isset($relationParams['through'])) {
+            // Many-to-many relation
+            $throughClass = $relationParams['through'];
+            $this_through_Relation = $loader->getClassRelationParamsWith($thisClass, $throughClass);
+            $initiator_through_Relation = $loader->getClassRelationParamsWith($initiatorClass, $throughClass);
+            if (!$entry->get('id')) {
+                $entry->save();
+            }
+            $throughItem = null;
+            $counter = isset($relationParams['counter']) ? $relationParams['counter'] : false;
+            $isNew = false;
+            if (isset($relationParams['unique']) && $relationParams['unique']) {
+                $condition = [
+                    ($initiator_through_Relation['foreignKey'] . '=' . $initiator->get('id')),
+                    ($this_through_Relation['foreignKey'] . '=' . $entry->get('id'))
+                ];
+                $throughItem = $throughClass::findFirst($condition);
+            }
+            if (is_null($throughItem)) {
+                $throughItem = $throughClass::create([
+                    $initiator_through_Relation['foreignKey'] => $initiator->get('id'),
+                    $this_through_Relation['foreignKey'] => $entry->get('id')
+                ]);
+                $isNew = true;
+            }
+            if ($counter) {
+                $throughItem->set($relationParams['counter'], $isNew ? 1 : ($throughItem->$counter + 1));
+            }
+            return $throughItem->save();
+        } else {
+            // One-to-many relation
+            $entry->set($relationParams['foreignKey'], $initiator->get('id'))->save();
+            if ($this->_loadingParams['loaded']) {
+                $this->_records[] = $entry;
+            }
         }
-        //TODO: Many-to-many relation implementation
         return $this;
     }
 
