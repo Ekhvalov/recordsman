@@ -24,7 +24,7 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
         );
     }
 
-    public static function createFromSql($class, $sqlQuery, $sqlParams) {
+    public static function createFromSql($class, $sqlQuery, $sqlParams = []) {
         return new self(
             $class,
             ['sql' => $sqlQuery, 'sqlParams' => $sqlParams]

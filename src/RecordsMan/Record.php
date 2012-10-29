@@ -84,6 +84,23 @@ abstract class Record {
     }
 
     /**
+     * Returns random set of records (optionally filtered by condition).
+     *
+     * @param null|array|Condition $condition
+     * @param null|array|int $limit
+     * @return RecordSet
+     */
+    public static function findRandom($condition = null, $limit = null) {
+        $qualifiedName = Helper::qualifyClassName(get_called_class());
+        $sql = Helper::createRandomSelectQuery(
+            self::getLoader()->getClassTableName($qualifiedName),
+            $condition,
+            $limit
+        );
+        return RecordSet::createFromSql($qualifiedName, $sql);
+    }
+
+    /**
      * Finds & returns records by custom SQL query
      *
      * @param string $sqlQuery Query text (input parameters can be placeholdered by "?")

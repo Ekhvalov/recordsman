@@ -80,6 +80,12 @@ class Helper {
         return $sql;
     }
 
+    public static function createRandomSelectQuery($tableName, $condition = null, $limit = null) {
+        $sql = "SELECT * FROM `{$tableName}` ";
+        $sql.= self::createSelectParams($condition, 'RAND()', $limit);
+        return $sql;
+    }
+
     /**
      * Преобразует параметр $orderParam в строку для SQL-запроса
      *
