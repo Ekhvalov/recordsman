@@ -151,20 +151,21 @@ abstract class Record {
 
     ////////// Triggers
 
-    final public static function addTrigger($triggerName, \Closure $callback) {
+    public static function addTrigger($triggerName, \Closure $callback) {
         if (!isset(self::$_triggers[$triggerName])) {
             self::$_triggers[$triggerName] = [];
         }
         self::$_triggers[$triggerName][] = $callback;
     }
 
-    final public function callTrigger($triggerName, $argsArray = []) {
+    public function callTrigger($triggerName, $argsArray = []) {
         if (!isset(self::$_triggers[$triggerName])) {
             return null;
         }
+        array_unshift($argsArray, $this);
         $result = null;
         foreach(self::$_triggers[$triggerName] as $callback) {
-            $result = call_user_func_array($callback->bindTo($this), $argsArray);
+            $result = call_user_func_array($callback, $argsArray);
             if ($result === false) {
                 break;
             }
@@ -247,6 +248,10 @@ abstract class Record {
     }
 
     public function save($testRelations = true) {
+        $triggerResult = $this->callTrigger('save');
+        if ($triggerResult === false) {
+            return $this;
+        }
         $thisId = $this->get('id');
         $context = $this->_getContext();
         $tableName = self::getLoader()->getClassTableName($context);
@@ -287,6 +292,10 @@ abstract class Record {
     }
 
     public function drop() {
+        $triggerResult = $this->callTrigger('drop');
+        if ($triggerResult === false) {
+            return $this;
+        }
         $thisId = $this->get('id');
         if (!$thisId) {
             return $this;
