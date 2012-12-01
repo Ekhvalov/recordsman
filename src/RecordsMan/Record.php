@@ -433,6 +433,10 @@ abstract class Record {
                     continue ;
                 }
                 */
+                $relationParams = $loader->getClassRelationParamsWith($context, $relClass);
+                if (isset($relationParams['through'])) {
+                    continue;
+                }
                 foreach($this->loadForeign($relClass) as $foreign) {
                     $foreign->drop();
                 }
