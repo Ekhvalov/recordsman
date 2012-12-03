@@ -36,14 +36,15 @@ class Loader {
             throw new RecordsManException("Table {$classMeta['tableName']} are not exists", 25);
         }
         $classMeta['fields'] = [];
+        $classMeta['triggers'] = [];
         foreach($this->getAdapter()->getTableColumns($classMeta['tableName']) as $columnDef) {
             //TODO: auto detect primary key
             $classMeta['fields'][$columnDef['Field']] = $columnDef['Default'];
         }
+        $this->_classes[$qualifiedName] = $classMeta;
         if (method_exists($qualifiedName, 'init')) {
             $qualifiedName::init();
         }
-        $this->_classes[$qualifiedName] = $classMeta;
         return $qualifiedName;
     }
 
@@ -118,6 +119,22 @@ class Loader {
     public function isFieldExists($className, $fieldName) {
         $qualifiedName = $this->registerClass($className);
         return array_key_exists($fieldName, $this->_classes[$qualifiedName]['fields']);
+    }
+
+    public function addClassTrigger($className, $triggerName, \Closure $callback) {
+        $qualifiedName = $this->registerClass($className);
+        if (!isset($this->_classes[$qualifiedName]['triggers'][$triggerName])) {
+            $this->_classes[$qualifiedName]['triggers'][$triggerName] = [];
+        }
+        $this->_classes[$qualifiedName]['triggers'][$triggerName][] = $callback;
+    }
+
+    public function getClassTriggersCallbacks($className, $triggerName) {
+        $qualifiedName = $this->registerClass($className);
+        if (!isset($this->_classes[$qualifiedName]['triggers'][$triggerName])) {
+            return [];
+        }
+        return $this->_classes[$qualifiedName]['triggers'][$triggerName];
     }
 
     private function _loadTables() {

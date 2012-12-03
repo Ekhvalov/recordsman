@@ -8,7 +8,6 @@ abstract class Record {
     const RELATION_MANY = 2;
 
     private static $_loader = null;
-    private static $_triggers = [];
 
     private $_fields = [];
     private $_foreign = [];
@@ -152,19 +151,14 @@ abstract class Record {
     ////////// Triggers
 
     public static function addTrigger($triggerName, \Closure $callback) {
-        if (!isset(self::$_triggers[$triggerName])) {
-            self::$_triggers[$triggerName] = [];
-        }
-        self::$_triggers[$triggerName][] = $callback;
+        self::getLoader()->addClassTrigger(get_called_class(), $triggerName, $callback);
     }
 
     public function callTrigger($triggerName, $argsArray = []) {
-        if (!isset(self::$_triggers[$triggerName])) {
-            return null;
-        }
+        $context = $this->_getContext();
         array_unshift($argsArray, $this);
         $result = null;
-        foreach(self::$_triggers[$triggerName] as $callback) {
+        foreach(self::getLoader()->getClassTriggersCallbacks($context, $triggerName) as $callback) {
             $result = call_user_func_array($callback, $argsArray);
             if ($result === false) {
                 break;
