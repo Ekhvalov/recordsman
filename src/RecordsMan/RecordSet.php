@@ -283,7 +283,8 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
     }
 
     private function _filterByCallback(\Closure $callback, $first = false) {
-        $newSet = $first ? null : $this->_newSelf();
+        $newSet = $this->_newSelf();
+        $newSet->_loadingParams['loaded'] = 1;
         foreach($this->_records as $record) {
             if (call_user_func($callback->bindTo($record))) {
                 if ($first) {
@@ -292,12 +293,12 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
                 $newSet->_records[] = $record;
             }
         }
-        $newSet->_loadingParams['loaded'] = 1;
-        return $newSet;
+        return $first ? null : $newSet;
     }
 
     private function _filterByCondition($condition, $first = false) {
-        $newSet = $first ? null : $this->_newSelf();
+        $newSet = $this->_newSelf();
+        $newSet->_loadingParams['loaded'] = 1;
         foreach($this->_records as $record) {
             if ($record->isMatch($condition)) {
                 if ($first) {
@@ -306,8 +307,7 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
                 $newSet->_records[] = $record;
             }
         }
-        $newSet->_loadingParams['loaded'] = 1;
-        return $newSet;
+        return $first ? null : $newSet;
     }
 
     private function _newSelf() {
