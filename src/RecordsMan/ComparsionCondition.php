@@ -81,6 +81,7 @@ class ComparsionCondition extends Condition {
         if (is_numeric($value)) {
             return $value;
         }
+        $value = $this->_trimQuotes($value);
         $value = str_replace('\\', '\\\\', $value);
         $value = str_replace("'", "\'", $value);
         return "'{$value}'";
@@ -115,7 +116,7 @@ class ComparsionCondition extends Condition {
 
     private static function _parseOperands($conditionString) {
         $matches = [];
-        $pattern = '/^(?<op1>\w+)\s*(?<sign>(>=)|(<=)|(!~)|([:=!><~]))\s*\'?(?<op2>.*?)\'?$/';
+        $pattern = '/^(?<op1>\w+)\s*(?<sign>(>=)|(<=)|(!~)|([:=!><~]))\s*(?<op2>\'?.*?\'?)$/';
         if (preg_match($pattern, $conditionString, $matches)) {
             return new self($matches['op1'], $matches['op2'], $matches['sign']);
         }
