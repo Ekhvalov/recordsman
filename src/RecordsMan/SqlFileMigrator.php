@@ -121,8 +121,8 @@ class SqlFileMigrator {
                 if (!preg_match($filePattern, $entry->getFilename(), $matches)) {
                     continue;
                 }
-                $fileVer = intval($matches['version']);
-                if (!$version && ($fileVer <= $currentVersion)) {
+                $fileVer = intval(ltrim($matches['version'], '0'));
+                if ($fileVer <= $currentVersion) {
                     continue;
                 }
                 $migrFiles[$fileVer] = $entry->getPathname();
@@ -133,7 +133,7 @@ class SqlFileMigrator {
 
         foreach ($migrFiles as $fileVer => $filePath) {
             $db->beginTransaction();
-            $this->_parser->setSourceFile($filePath)->parse(function($query, $parser) use ($db, &$info) {
+            $this->_parser->setSourceFile($filePath)->parse(function($query, $parser) use ($db, $logCallback, &$info) {
                 try {
                     $db->query($query);
                     $info['queries']++;
