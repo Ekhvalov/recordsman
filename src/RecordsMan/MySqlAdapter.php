@@ -4,6 +4,9 @@ namespace RecordsMan;
 
 class MySqlAdapter implements IDBAdapter {
 
+    private static $_updPattern = '/^\s*update\s+`?\w+`?\s+set/Uis';
+    private static $_insPattern = '/^\s*insert\s+into/Uis';
+
     protected $_host = 'localhost';
     protected $_user = 'root';
     protected $_pass = '';
@@ -13,11 +16,13 @@ class MySqlAdapter implements IDBAdapter {
     protected $_db = null;
     protected $_logging = false;
     protected $_queriesLog = [];
+    protected $_readonly = false;
 
-    public function __construct($host = 'localhost', $user = 'root', $pass = '', $db = '', $encoding = 'UTF8') {
+    public function __construct($host = 'localhost', $user = 'root', $pass = '', $db = '', $encoding = 'UTF8', $readonly = false) {
         if ($host && $user) {
             $this->connect($host, $user, $pass, $db, $encoding);
         }
+        $this->_readonly = $readonly;
     }
 
     public function connect($host = '', $user = '', $pass = '', $db = '', $encoding = '') {
@@ -85,6 +90,9 @@ class MySqlAdapter implements IDBAdapter {
     }
 
     public function query($sql, $params = null) {
+        if ($this->_readonly && $this->_checkQueryForDataChanging($sql)) {
+            throw new RecordsManException("Recordsman adapter: Connection opened in read-only mode");
+        }
         $stmt = $this->_queryPrepare($sql, $params);
         if ($stmt->execute($params)) {
             return $stmt->rowCount();
@@ -145,6 +153,10 @@ class MySqlAdapter implements IDBAdapter {
         return $this;
     }
 
+
+    protected function _checkQueryForDataChanging($sql) {
+        return preg_match(self::$_insPattern, $sql) || preg_match(self::$_updPattern, $sql);
+    }
 
     protected function _realConnect() {
         $dsn = 'mysql:' . ($this->_dbname ? "dbname={$this->_dbname};" : '') . "host={$this->_host}";
