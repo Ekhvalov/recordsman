@@ -5,6 +5,7 @@ namespace RecordsMan;
 class Loader {
 
     private $_adapter = null;
+    private $_cacher = null;
     private $_tables = [];
     private $_classes = [];
 
@@ -21,6 +22,22 @@ class Loader {
      */
     public function getAdapter() {
         return $this->_adapter;
+    }
+
+    /**
+     * @param IRecordsCacher $cacher
+     * @return self
+     */
+    public function setCacheProvider(IRecordsCacher $cacher) {
+        $this->_cacher = $cacher;
+        return $this;
+    }
+
+    /**
+     * @return IRecordsCacher
+     */
+    public function getCacheProvider() {
+        return $this->_cacher;
     }
 
     public function registerClass($className) {

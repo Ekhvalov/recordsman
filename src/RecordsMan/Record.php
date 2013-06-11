@@ -119,6 +119,26 @@ abstract class Record {
         return RecordSet::createFromSql($qualifiedName, $sqlQuery, $sqlParams);
     }
 
+    public static function loadFromCache($id, $autocache = false, $lifetime = null) {
+        $qualifiedName = Helper::qualifyClassName(get_called_class());
+        $cacher = self::getCacheProvider();
+        $itemFields = $cacher->getRecord($qualifiedName, $id);
+        if (is_null($itemFields)) {
+            $item = static::load($id);
+            if ($autocache) {
+                $item->cache($lifetime);
+            }
+        } else {
+            $item = static::_fromArray($itemFields);
+        }
+        return $item;
+    }
+
+    public static function loadCachedSet($key) {
+        $qualifiedName = Helper::qualifyClassName(get_called_class());
+        return RecordSet::createFromCache($qualifiedName, $key);
+    }
+
     /**
      * For inner use
      *
@@ -304,6 +324,12 @@ abstract class Record {
         return $this;
     }
 
+    public function cache($lifetime = null) {
+        $cacher = self::getCacheProvider();
+        $cacher->storeRecord($this, $lifetime);
+        return $this;
+    }
+
 
     ////////// Class relations manipulation
 
@@ -370,6 +396,13 @@ abstract class Record {
         return self::$_loader->getAdapter();
     }
 
+    /**
+     * @return IRecordsCacher
+     */
+    public static function getCacheProvider() {
+        return self::$_loader->getCacheProvider();
+    }
+
 
     ////////// Class meta manipulation methods
 
@@ -393,6 +426,10 @@ abstract class Record {
             'hasMany'   => $hasMany,
             'belongsTo' => $belongsTo
         ];
+    }
+
+    public function getQualifiedClassname() {
+        return $this->_getContext();
     }
 
 

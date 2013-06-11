@@ -44,6 +44,28 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
         );
     }
 
+    public static function createFromCache($class, $key) {
+        $cacher = Record::getCacheProvider();
+        $ids = $cacher->getRecordSet($class, $key);
+        if (is_null($ids)) {
+            return null;
+        }
+        return new self(
+            $class,
+            ['cache' => $key, 'ids' => $ids]
+        );
+    }
+
+    public static function createEmpty($class) {
+        $set = new self($class, 'filter');
+        $set->_loadingParams['loaded'] = true;
+        return $set;
+    }
+
+    public function getClassName() {
+        return $this->_loadingParams['class'];
+    }
+
 
     ////////// Records manipulation methods
 
@@ -147,6 +169,72 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
         return $res;
     }
 
+    //TODO: tests
+    public function cache($key, $lifetime = null) {
+        $cacher = Record::getCacheProvider();
+        $cacher->storeRecordSet($this, $key, $lifetime);
+        return $this;
+    }
+
+    /**
+     * @todo Tests
+     *
+     * @return Record
+     */
+    public function shift() {
+        $this->_loadRecords();
+        return array_shift($this->_records);
+    }
+
+    /**
+     * @todo Tests
+     *
+     * @return self
+     */
+    public function prepend(Record $item) {
+        if ($item->getQualifiedClassname() != $this->getClassName()) {
+            throw new RecordsManException("Can't prepend set of {$this->getClassName()} with item of class {$item->getQualifiedClassname()}");
+        }
+        array_unshift($this->_records, $item);
+        return $this;
+    }
+
+    /**
+     * @todo Tests
+     *
+     * @return Record
+     */
+    public function pop() {
+        $this->_loadRecords();
+        return array_pop($this->_records);
+    }
+
+    /**
+     * @todo Tests
+     *
+     * @return self
+     */
+    public function append(Record $item) {
+        if ($item->getQualifiedClassname() != $this->getClassName()) {
+            throw new RecordsManException("Can't append item of class {$item->getQualifiedClassname()} to set of {$this->getClassName()}");
+        }
+        $this->_records[] = $item;
+        return $this;
+    }
+
+    /**
+     * @todo Tests
+     *
+     * @return RecordSet
+     */
+    public function slice($count, $from = 0) {
+        $this->_loadRecords();
+        $newSet = $this->_newSelf();
+        $newSet->_loadingParams['loaded'] = 1;
+        $newSet->_records = array_slice($this->_records, $from, $count);
+        return $newSet;
+    }
+
 
     ////////// Countable implementation
 
@@ -226,51 +314,71 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
         }
         $targetClass = $this->_loadingParams['class'];
         $loadBy = $this->_loadingParams['loadBy'];
-        if (isset($loadBy['sql'])) {
-            $rows = Record::getAdapter()->fetchRows(
-                $loadBy['sql'],
-                isset($loadBy['sqlParams']) ? $loadBy['sqlParams'] : []
-            );
-        } elseif (isset($loadBy['relation'])) {
-            $relationParams = $loadBy['relation'];
-            $srcRecord = $this->_loadingParams['initiator'];
-            if (isset($relationParams['through'])) {
-                // Many-to-many relation
-                $loader = Record::getLoader();
-                $srcClass = Helper::qualifyClassName(get_class($srcRecord));
-                $throughClass = $relationParams['through'];
-                $throughTab = $loader->getClassTableName($throughClass);
-                $targetTab = $loader->getClassTableName($targetClass);
-                $targetThroughRelationParams = $loader->getClassRelationParamsWith($targetClass, $throughClass);
-                $targetThroughForeignKey = $targetThroughRelationParams['foreignKey'];
-                $scrThroughRelationParams = $loader->getClassRelationParamsWith($srcClass, $throughClass);
-                $srcThroughForeignKey = $scrThroughRelationParams['foreignKey'];
-                //TODO: how to define field prefix in condition?
-                $queryParams = "{$srcThroughForeignKey}={$srcRecord->get('id')}";
-                if (array_key_exists('condition', $scrThroughRelationParams)) {
-                    $queryParams = Condition::createAndBlock([$queryParams, $scrThroughRelationParams['condition']]);
-                }
-                $sql = Helper::createSelectJoinQuery(
+        $rows = [];
+
+        switch (true) {
+            // Loading by SQL query
+            case isset($loadBy['sql']):
+                $rows = Record::getAdapter()->fetchRows(
+                    $loadBy['sql'],
+                    isset($loadBy['sqlParams']) ? $loadBy['sqlParams'] : []
+                );
+                break;
+
+            // Loading by relation
+            case isset($loadBy['relation']):
+                $relationParams = $loadBy['relation'];
+                $srcRecord = $this->_loadingParams['initiator'];
+                if (isset($relationParams['through'])) {
+                    // Many-to-many relation
+                    $loader = Record::getLoader();
+                    $srcClass = Helper::qualifyClassName(get_class($srcRecord));
+                    $throughClass = $relationParams['through'];
+                    $throughTab = $loader->getClassTableName($throughClass);
+                    $targetTab = $loader->getClassTableName($targetClass);
+                    $targetThroughRelationParams = $loader->getClassRelationParamsWith($targetClass, $throughClass);
+                    $targetThroughForeignKey = $targetThroughRelationParams['foreignKey'];
+                    $scrThroughRelationParams = $loader->getClassRelationParamsWith($srcClass, $throughClass);
+                    $srcThroughForeignKey = $scrThroughRelationParams['foreignKey'];
+                    //TODO: how to define field prefix in condition?
+                    $queryParams = "{$srcThroughForeignKey}={$srcRecord->get('id')}";
+                    if (array_key_exists('condition', $scrThroughRelationParams)) {
+                        $queryParams = Condition::createAndBlock([$queryParams, $scrThroughRelationParams['condition']]);
+                    }
+                    $sql = Helper::createSelectJoinQuery(
                         $targetTab,
                         $throughTab,
                         $targetThroughForeignKey,
                         $queryParams
-                );
-                $rows = Record::getAdapter()->fetchRows($sql);
-            } else {
-                // One-to-many relation
-                $queryParams = "{$relationParams['foreignKey']}={$srcRecord->get('id')}";
-                if (array_key_exists('condition', $relationParams)) {
-                    $queryParams = Condition::createAndBlock([$queryParams, $relationParams['condition']]);
+                    );
+                    $rows = Record::getAdapter()->fetchRows($sql);
+                } else {
+                    // One-to-many relation
+                    $queryParams = "{$relationParams['foreignKey']}={$srcRecord->get('id')}";
+                    if (array_key_exists('condition', $relationParams)) {
+                        $queryParams = Condition::createAndBlock([$queryParams, $relationParams['condition']]);
+                    }
+                    $rows = call_user_func_array([$targetClass, '_select'], [$queryParams]);
                 }
-                $rows = call_user_func_array([$targetClass, '_select'], [$queryParams]);
-            }
-        } else {
-            $params = isset($loadBy['params']) ? $loadBy['params'] : null;
-            $order = isset($loadBy['order']) ? $loadBy['order'] : null;
-            $limit = isset($loadBy['limit']) ? $loadBy['limit'] : null;
-            $rows = call_user_func_array([$targetClass, '_select'], [$params, $order, $limit]);
+                break;
+
+            // Loading from cache
+            case isset($loadBy['cache']):
+                $cacher = Record::getCacheProvider();
+                foreach($loadBy['ids'] as $id) {
+                    //TODO: Warning! every record may not exists in the cache!
+                    $rows[] = $cacher->getRecord($targetClass, $id);
+                }
+                break;
+
+            // Loading by condition
+            default:
+                $params = isset($loadBy['params']) ? $loadBy['params'] : null;
+                $order = isset($loadBy['order']) ? $loadBy['order'] : null;
+                $limit = isset($loadBy['limit']) ? $loadBy['limit'] : null;
+                $rows = call_user_func_array([$targetClass, '_select'], [$params, $order, $limit]);
         }
+
         $this->_records = [];
         if (!empty($rows)) {
             foreach($rows as $row) {
@@ -284,7 +392,7 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
 
     private function _filterByCallback(\Closure $callback, $first = false) {
         $newSet = $this->_newSelf();
-        $newSet->_loadingParams['loaded'] = 1;
+        $newSet->_loadingParams['loaded'] = true;
         foreach($this->_records as $record) {
             if (call_user_func($callback->bindTo($record))) {
                 if ($first) {
@@ -298,7 +406,7 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
 
     private function _filterByCondition($condition, $first = false) {
         $newSet = $this->_newSelf();
-        $newSet->_loadingParams['loaded'] = 1;
+        $newSet->_loadingParams['loaded'] = true;
         foreach($this->_records as $record) {
             if ($record->isMatch($condition)) {
                 if ($first) {
