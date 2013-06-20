@@ -49,7 +49,7 @@ class WPCacheAdapter implements IRecordsCacher {
     }
 
     private function _buildItemKey($class, $id) {
-        return "{$this->_prefix}}:{$class}:{$id}";
+        return "{$this->_prefix}:{$class}:{$id}";
     }
 
     private function _buildSetKey($class, $key) {
