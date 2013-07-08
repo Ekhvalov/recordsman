@@ -258,6 +258,7 @@ abstract class Record {
         $rows = self::_dbResult($sql);
         //TODO: exception throwing if rows are empty
         $this->_fields = $rows[0];
+        $this->_foreign = [];
         return $this;
     }
 
