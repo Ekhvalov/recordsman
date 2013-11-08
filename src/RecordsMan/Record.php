@@ -17,7 +17,7 @@ abstract class Record {
     ////////// Records loading static methods
 
     /**
-     * Loads an single instance by primary key
+     * Loads a single instance by primary key
      *
      * @param int $id PK value
      * @return Record Returns Record object or throws exception if no records found
@@ -191,16 +191,16 @@ abstract class Record {
     ////////// Fields manipulating methods
 
     public function get($fieldName) {
+        $context = $this->_getContext();
         if (array_key_exists($fieldName, $this->_fields)) {
             return $this->_fields[$fieldName];
         }
-        $context = $this->_getContext();
         $foreignClass = Helper::getClassNamespace($context) . ucfirst(Helper::getSingular($fieldName));
-        try {
-            $foreign = $this->loadForeign($foreignClass);
-            return $foreign;
-        } catch(\Exception $e) {
-
+        if (class_exists($foreignClass)) {
+            $relation = $this->getRelationTypeWith($foreignClass);
+            if ($relation != self::RELATION_NONE) {
+                return $this->loadForeign($foreignClass);
+            }
         }
         throw new RecordsManException("Field {$fieldName} are not exists in class {$context}", 40);
     }
@@ -212,13 +212,30 @@ abstract class Record {
             }
             return $this;
         }
-        if ($fieldNameOrFieldsArray == 'id') {
+        $field = $fieldNameOrFieldsArray;
+        if ($field == 'id') {
             throw new RecordsManException("Can't change `id` field", 70);
         }
-        $this->_fields[$fieldNameOrFieldsArray] = $value;
-        if ($this->hasOwnField($fieldNameOrFieldsArray)) {
-            $this->_changed = true;
+        $context = $this->_getContext();
+        if (
+            self::getLoader()->isFieldProtected($context, $field) &&
+            !$this->_isInnerCall(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS))
+        ) {
+            throw new RecordsManException("Can't set value of protected field {$context}::{$field}", 71);
         }
+        if ($this->hasOwnField($field)) {
+            $this->_fields[$field] = $value;
+            $this->_changed = true;
+            return $this;
+        }
+        $foreignClass = Helper::getClassNamespace($context) . ucfirst(Helper::getSingular($fieldNameOrFieldsArray));
+        if (class_exists($foreignClass)) {
+            $relation = $this->getRelationTypeWith($foreignClass);
+            if ($relation != self::RELATION_NONE) {
+                return $this->setForeign($foreignClass, $value);
+            }
+        }
+        $this->_fields[$fieldNameOrFieldsArray] = $value;
         return $this;
     }
 
@@ -228,12 +245,19 @@ abstract class Record {
 
     //TODO: tests
     public function toArray($neededFields = []) {
+        $context = $this->_getContext();
+        $classFields = self::getLoader()->getFieldsDefinition($context);
+        $actualFields = $this->_fields;
+        // filtering only own fields
+        foreach($classFields as $fieldName => $_) {
+            $actualFields[$fieldName] = $this->get($fieldName);
+        }
         if (empty($neededFields)) {
-            return $this->_fields;
+            return $actualFields;
         }
         $res = [];
         foreach($neededFields as $fieldName) {
-            $res[$fieldName] = (array_key_exists($fieldName, $this->_fields)) ? $this->_fields[$fieldName] : null;
+            $res[$fieldName] = (array_key_exists($fieldName, $actualFields)) ? $actualFields[$fieldName] : null;
         }
         return $res;
     }
@@ -256,7 +280,6 @@ abstract class Record {
             1
         );
         $rows = self::_dbResult($sql);
-        //TODO: exception throwing if rows are empty
         $this->_fields = $rows[0];
         $this->_foreign = [];
         return $this;
@@ -270,9 +293,11 @@ abstract class Record {
         $thisId = $this->get('id');
         $context = $this->_getContext();
         $tableName = self::getLoader()->getClassTableName($context);
+        $classFields = self::getLoader()->getFieldsDefinition($context);
         $actualFields = [];
         // filtering only own fields
-        foreach($this->_fields as $fieldName => $value) {
+        foreach($classFields as $fieldName => $_) {
+            $value = $this->get($fieldName);
             if ( ($fieldName != 'id') && $this->hasOwnField($fieldName) ) {
                 $actualFields[$fieldName] = $value;
             }
@@ -354,13 +379,45 @@ abstract class Record {
         $relationParams = $this->getRelationParamsWith($foreignClass);
         switch ($relationType) {
             case self::RELATION_BELONGS:
-                $this->_foreign[$foreignClass] = $foreignClass::load($this->get($relationParams['foreignKey']));
+                $fKeyValue = $this->get($relationParams['foreignKey']);
+                $this->_foreign[$foreignClass] = $fKeyValue ? $foreignClass::load($fKeyValue) : null;
                 break;
             case self::RELATION_MANY:
                 $this->_foreign[$foreignClass] = RecordSet::createFromForeign($this, $foreignClass);
                 break;
         }
         return $this->_foreign[$foreignClass];
+    }
+
+    public function setForeign($className, $records) {
+        $context = $this->_getContext();
+        $foreignClass = Helper::qualifyClassName($className);
+        $relationType = $this->getRelationTypeWith($foreignClass);
+        $relationParams = $this->getRelationParamsWith($foreignClass);
+        switch ($relationType) {
+            case self::RELATION_BELONGS:
+                if (!($records instanceof Record)) {
+                    throw new RecordsManException("Can't set foreign from " . gettype($records));
+                }
+                if (Helper::qualifyClassName(get_class($records)) != $foreignClass) {
+                    throw new RecordsManException("Can't set foreign ({$foreignClass}) from " . get_class($records));
+                }
+                if (!$records->id) {
+                    $records->save();
+                }
+                $this->_foreign[$foreignClass] = $records;
+                $field = $relationParams['foreignKey'];
+                $this->$field = $records->id;
+                break;
+            case self::RELATION_MANY:
+                foreach($records as $record) {
+                    $record->setForeign($context, $this);
+                }
+                break;
+            default:
+                throw new RecordsManException("Class {$context} hasn't relation with {$foreignClass}", 10);
+        }
+        return $this;
     }
 
 
@@ -425,7 +482,8 @@ abstract class Record {
         return [
             'tableName' => $tableName,
             'hasMany'   => $hasMany,
-            'belongsTo' => $belongsTo
+            'belongsTo' => $belongsTo,
+            'protected' => (isset(static::$protected) && is_array(static::$protected)) ? static::$protected : []
         ];
     }
 
@@ -436,11 +494,8 @@ abstract class Record {
 
     ////////// Closed methods
 
-    protected function __construct($fields) {
-        if (!is_array($fields)) {
-            //TODO: Exception throwing
-        }
-        $this->_fields = $fields;
+    protected function __construct($initValues) {
+        $this->_fields = $initValues;
     }
 
     public static function _fromArray($fieldsArray) {
@@ -453,6 +508,23 @@ abstract class Record {
 
     protected function _getContext() {
         return Helper::qualifyClassName(get_class($this));
+    }
+
+    private function _isInnerCall($trace) {
+        $depth = count($trace);
+        if ($depth < 2) {
+            return false;
+        }
+        for($i=1; $i<$depth; $i++) {
+            if (!isset($trace[$i]['class'])) {
+                return false;
+            }
+            if (($trace[$i]['class'] == __CLASS__) && (($trace[$i]['function'] == '__set') || ($trace[$i]['function'] == 'set') || ($trace[$i]['function'] == 'create'))) {
+                continue;
+            }
+            return (($trace[$i]['class'] == __CLASS__) || ($trace[$i]['class'] == get_class($this)));
+        }
+        return false;
     }
 
     private function _deleteRelatedRecords() {

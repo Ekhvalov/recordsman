@@ -132,7 +132,7 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
             return $throughItem->save();
         } else {
             // One-to-many relation
-            $entry->set($relationParams['foreignKey'], $initiator->get('id'))->save();
+            $entry->setForeign($initiatorClass, $initiator)->save();
             if ($this->_loadingParams['loaded']) {
                 $this->_records[] = $entry;
             }
