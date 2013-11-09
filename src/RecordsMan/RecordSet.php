@@ -120,10 +120,9 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
                 $throughItem = $throughClass::findFirst($condition);
             }
             if (is_null($throughItem)) {
-                $throughItem = $throughClass::create([
-                    $initiator_through_Relation['foreignKey'] => $initiator->get('id'),
-                    $this_through_Relation['foreignKey'] => $entry->get('id')
-                ]);
+                $throughItem = $throughClass::create();
+                $throughItem->setForeign($thisClass, $entry);
+                $throughItem->setForeign($initiatorClass, $initiator);
                 $isNew = true;
             }
             if ($counter) {

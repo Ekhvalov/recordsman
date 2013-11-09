@@ -11,7 +11,7 @@ abstract class Record {
 
     private $_fields = [];
     private $_foreign = [];
-    private $_changed = false;
+    private $_changed = [];
 
 
     ////////// Records loading static methods
@@ -219,13 +219,17 @@ abstract class Record {
         $context = $this->_getContext();
         if (
             self::getLoader()->isFieldProtected($context, $field) &&
-            !$this->_isInnerCall(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS))
+            !$this->_isInnerCall(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 5))
         ) {
             throw new RecordsManException("Can't set value of protected field {$context}::{$field}", 71);
         }
         if ($this->hasOwnField($field)) {
-            $this->_fields[$field] = $value;
-            $this->_changed = true;
+            if ($this->_fields[$field] !== $value) {
+                $this->_fields[$field] = $value;
+                if (!in_array($field, $this->_changed)) {
+                    $this->_changed[] = $field;
+                }
+            }
             return $this;
         }
         $foreignClass = Helper::getClassNamespace($context) . ucfirst(Helper::getSingular($fieldNameOrFieldsArray));
@@ -269,6 +273,10 @@ abstract class Record {
 
     ////////// Creating / deleting/ updating
 
+    public function wasChanged() {
+        return !$this->id || !empty($this->_changed);
+    }
+
     public function reload() {
         if (!$this->get('id')) {
             return $this;
@@ -286,6 +294,9 @@ abstract class Record {
     }
 
     public function save($testRelations = true) {
+        if (!$this->wasChanged()) {
+            return $this;
+        }
         $triggerResult = $this->callTrigger('save');
         if ($triggerResult === false) {
             return $this;
@@ -293,10 +304,9 @@ abstract class Record {
         $thisId = $this->get('id');
         $context = $this->_getContext();
         $tableName = self::getLoader()->getClassTableName($context);
-        $classFields = self::getLoader()->getFieldsDefinition($context);
         $actualFields = [];
         // filtering only own fields
-        foreach($classFields as $fieldName => $_) {
+        foreach($this->_changed as $fieldName) {
             $value = $this->get($fieldName);
             if ( ($fieldName != 'id') && $this->hasOwnField($fieldName) ) {
                 $actualFields[$fieldName] = $value;
