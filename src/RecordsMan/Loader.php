@@ -138,11 +138,6 @@ class Loader {
         return array_key_exists($fieldName, $this->_classes[$qualifiedName]['fields']);
     }
 
-    public function isFieldProtected($className, $field) {
-        $q = $this->registerClass($className);
-        return in_array($field, $this->_classes[$q]['protected']);
-    }
-
     public function addClassTrigger($className, $triggerName, \Closure $callback) {
         $qualifiedName = $this->registerClass($className);
         if (!isset($this->_classes[$qualifiedName]['triggers'][$triggerName])) {

@@ -202,10 +202,10 @@ abstract class Record {
                 return $this->loadForeign($foreignClass);
             }
         }
-        throw new RecordsManException("Field {$fieldName} are not exists in class {$context}", 40);
+        return null;
     }
 
-    public function set($fieldNameOrFieldsArray, $value = null) {
+    protected function set($fieldNameOrFieldsArray, $value = null) {
         if (is_array($fieldNameOrFieldsArray)) {
             foreach($fieldNameOrFieldsArray as $fieldName => $fieldValue) {
                 $this->set($fieldName, $fieldValue);
@@ -217,12 +217,6 @@ abstract class Record {
             throw new RecordsManException("Can't change `id` field", 70);
         }
         $context = $this->_getContext();
-        if (
-            self::getLoader()->isFieldProtected($context, $field) &&
-            !$this->_isInnerCall(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 5))
-        ) {
-            throw new RecordsManException("Can't set value of protected field {$context}::{$field}", 71);
-        }
         if ($this->hasOwnField($field)) {
             if ($this->_fields[$field] !== $value) {
                 $this->_fields[$field] = $value;
@@ -417,7 +411,7 @@ abstract class Record {
                 }
                 $this->_foreign[$foreignClass] = $records;
                 $field = $relationParams['foreignKey'];
-                $this->$field = $records->id;
+                $this->set($field, $records->id);
                 break;
             case self::RELATION_MANY:
                 foreach($records as $record) {
@@ -438,7 +432,8 @@ abstract class Record {
     }
 
     public function __set($fieldName, $value) {
-        $this->set($fieldName, $value);
+        $context = $this->_getContext();
+        throw new RecordsManException("Field {$context}::{$fieldName} was not declared as public (use TPublicFields to declare public fields)", 41);
     }
 
 
@@ -492,8 +487,7 @@ abstract class Record {
         return [
             'tableName' => $tableName,
             'hasMany'   => $hasMany,
-            'belongsTo' => $belongsTo,
-            'protected' => (isset(static::$protected) && is_array(static::$protected)) ? static::$protected : []
+            'belongsTo' => $belongsTo
         ];
     }
 
@@ -518,23 +512,6 @@ abstract class Record {
 
     protected function _getContext() {
         return Helper::qualifyClassName(get_class($this));
-    }
-
-    private function _isInnerCall($trace) {
-        $depth = count($trace);
-        if ($depth < 2) {
-            return false;
-        }
-        for($i=1; $i<$depth; $i++) {
-            if (!isset($trace[$i]['class'])) {
-                return false;
-            }
-            if (($trace[$i]['class'] == __CLASS__) && (($trace[$i]['function'] == '__set') || ($trace[$i]['function'] == 'set') || ($trace[$i]['function'] == 'create'))) {
-                continue;
-            }
-            return (($trace[$i]['class'] == __CLASS__) || ($trace[$i]['class'] == get_class($this)));
-        }
-        return false;
     }
 
     private function _deleteRelatedRecords() {
