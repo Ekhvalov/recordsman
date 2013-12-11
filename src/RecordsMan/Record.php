@@ -3,9 +3,19 @@ namespace RecordsMan;
 
 abstract class Record {
 
-    const RELATION_NONE = false;
+    const RELATION_NONE    = false;
     const RELATION_BELONGS = 1;
-    const RELATION_MANY = 2;
+    const RELATION_MANY    = 2;
+
+    const SAVE         = 1;
+    const SAVE_UPDATE  = 2;
+    const SAVE_CREATE  = 4;
+    const SAVED        = 8;
+    const SAVE_UPDATED = 16;
+    const SAVE_CREATED = 32;
+    const DELETE       = 64;
+    const DELETED      = 128;
+    //Note: don't forget to add trigger def to returned array of self::getDefaultTriggersList() when adding new
 
     private static $_loader = null;
 
@@ -170,12 +180,23 @@ abstract class Record {
 
     ////////// Triggers
 
-    public static function addTrigger($triggerName, \Closure $callback) {
-        self::getLoader()->addClassTrigger(get_called_class(), $triggerName, $callback);
+    public static function addTrigger($triggerType, \Closure $callback) {
+        $defTriggers = self::getDefaultTriggersList();
+        $loader = self::getLoader();
+        $calledClass = get_called_class();
+        if (is_int($triggerType) && !in_array($triggerType, $defTriggers)) {
+            // Interpret as a combination of default triggers
+            foreach($defTriggers as $defTrigger) {
+                ($triggerType & $defTrigger) && $loader->addClassTrigger($calledClass, $defTrigger, $callback);
+            }
+            return;
+        }
+        $loader->addClassTrigger($calledClass, $triggerType, $callback);
     }
 
     public function callTrigger($triggerName, $argsArray = []) {
         $context = $this->_getContext();
+        array_unshift($argsArray, $triggerName);
         array_unshift($argsArray, $this);
         $result = null;
         foreach(self::getLoader()->getClassTriggersCallbacks($context, $triggerName) as $callback) {
@@ -284,6 +305,7 @@ abstract class Record {
         $rows = self::_dbResult($sql);
         $this->_fields = $rows[0];
         $this->_foreign = [];
+        $this->_changed = [];
         return $this;
     }
 
@@ -291,8 +313,7 @@ abstract class Record {
         if (!$this->wasChanged()) {
             return $this;
         }
-        $triggerResult = $this->callTrigger('save');
-        if ($triggerResult === false) {
+        if ($this->callTrigger(self::SAVE, [$this->_changed]) === false) {
             return $this;
         }
         $thisId = $this->get('id');
@@ -314,6 +335,9 @@ abstract class Record {
             if ($this->hasOwnField('updated_at')) {
                 $this->_fields['updated_at'] = $actualFields['updated_at'] = time();
             }
+            if ($this->callTrigger(self::SAVE_UPDATE, [$this->_changed]) === false) {
+                return $this;
+            }
             $sqlParams = [];
             $sql = "UPDATE `{$tableName}` SET ";
             foreach($actualFields as $fieldName => $value) {
@@ -323,21 +347,29 @@ abstract class Record {
             $sql = rtrim($sql, ',');
             $sql.= " WHERE `id`={$thisId} LIMIT 1";
             self::getAdapter()->query($sql, $sqlParams);
+            $this->callTrigger(self::SAVED, [$this->_changed]);
+            $this->callTrigger(self::SAVE_UPDATED, [$this->_changed]);
+            $this->_changed = [];
             return $this;
         }
         // creating new entry
         if ($this->hasOwnField('created_at')) {
             $this->_fields['created_at'] = $actualFields['created_at'] = time();
         }
+        if ($this->callTrigger(self::SAVE_CREATE, [$this->_changed]) === false) {
+            return $this;
+        }
         self::getAdapter()->insert($tableName, $actualFields);
         $this->_fields['id'] = self::getAdapter()->getLastInsertId();
         $this->_updateRelatedCounters();
+        $this->callTrigger(self::SAVED, [$this->_changed]);
+        $this->callTrigger(self::SAVE_CREATED, [$this->_changed]);
+        $this->_changed = [];
         return $this;
     }
 
     public function drop() {
-        $triggerResult = $this->callTrigger('drop');
-        if ($triggerResult === false) {
+        if ($this->callTrigger(self::DELETE) === false) {
             return $this;
         }
         $thisId = $this->get('id');
@@ -351,6 +383,7 @@ abstract class Record {
         self::getAdapter()->query($sql);
         $this->_updateRelatedCounters();
         $this->_fields['id'] = 0;
+        $this->callTrigger(self::DELETED);
         return $this;
     }
 
@@ -491,10 +524,22 @@ abstract class Record {
         ];
     }
 
+    final public static function getDefaultTriggersList() {
+        return [
+            self::SAVE,
+            self::SAVE_UPDATE,
+            self::SAVE_CREATE,
+            self::SAVED,
+            self::SAVE_UPDATED,
+            self::SAVE_CREATED,
+            self::DELETE,
+            self::DELETED
+        ];
+    }
+
     public function getQualifiedClassname() {
         return $this->_getContext();
     }
-
 
     ////////// Closed methods
 
@@ -520,19 +565,6 @@ abstract class Record {
         $relatedClasses = $loader->getClassRelations($context, Record::RELATION_MANY);
         if (!empty($relatedClasses)) {
             foreach($relatedClasses as $relClass) {
-                //TODO: check, if included traits, redeclared drop() method or extra params defined, needs object-by-obect deleting
-                /*
-                $foreignRelations = $loader->getClassRelations($relClass, Record::RELATION_MANY);
-                $classCounters = $loader->getClassCounters($relClass, $context);
-                if (empty($foreignRelations) && empty($classCounters)) {
-                    // group deleting if foreign class has no relations & counters
-                    $foreignKey = $this->getRelationParamsWith($relClass)['foreignKey'];
-                    $sql = "DELETE FROM `" . $loader->getClassTableName($relClass) . "` ";
-                    $sql.= "WHERE `{$foreignKey}`={$this->get('id')}";
-                    self::getAdapter()->query($sql);
-                    continue ;
-                }
-                */
                 $relationParams = $loader->getClassRelationParamsWith($context, $relClass);
                 if (isset($relationParams['through'])) {
                     continue;

@@ -138,12 +138,12 @@ class Loader {
         return array_key_exists($fieldName, $this->_classes[$qualifiedName]['fields']);
     }
 
-    public function addClassTrigger($className, $triggerName, \Closure $callback) {
+    public function addClassTrigger($className, $triggerType, \Closure $callback) {
         $qualifiedName = $this->registerClass($className);
-        if (!isset($this->_classes[$qualifiedName]['triggers'][$triggerName])) {
-            $this->_classes[$qualifiedName]['triggers'][$triggerName] = [];
+        if (!isset($this->_classes[$qualifiedName]['triggers'][$triggerType])) {
+            $this->_classes[$qualifiedName]['triggers'][$triggerType] = [];
         }
-        $this->_classes[$qualifiedName]['triggers'][$triggerName][] = $callback;
+        $this->_classes[$qualifiedName]['triggers'][$triggerType][] = $callback;
     }
 
     public function getClassTriggersCallbacks($className, $triggerName) {
