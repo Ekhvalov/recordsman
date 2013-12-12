@@ -69,6 +69,12 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
 
     ////////// Records manipulation methods
 
+    public function save($testRelations = true) {
+        return $this->map(function($_, Record $entry) use ($testRelations) {
+            $entry->save($testRelations);
+        });
+    }
+
     public function reload() {
         $this->_loadRecords(true);
         return $this;
@@ -134,6 +140,16 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
             $entry->setForeign($initiatorClass, $initiator)->save();
             if ($this->_loadingParams['loaded']) {
                 $this->_records[] = $entry;
+            }
+        }
+        return $this;
+    }
+
+    public function map(\Closure $callback) {
+        $this->_loadRecords();
+        foreach($this->_records as $index => $record) {
+            if ($callback($index, $record) === false) {
+                break;
             }
         }
         return $this;
