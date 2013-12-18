@@ -239,7 +239,7 @@ abstract class Record {
         }
         $context = $this->_getContext();
         if ($this->hasOwnField($field)) {
-            if ($this->_fields[$field] !== $value) {
+            if ($this->_fields[$field] != $value) {
                 $this->_fields[$field] = $value;
                 if (!in_array($field, $this->_changed)) {
                     $this->_changed[] = $field;
