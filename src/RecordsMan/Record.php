@@ -347,6 +347,7 @@ abstract class Record {
             $sql = rtrim($sql, ',');
             $sql.= " WHERE `id`={$thisId} LIMIT 1";
             self::getAdapter()->query($sql, $sqlParams);
+            $this->_updateRelatedCounters(); //TODO: optimize: only if foreign keys was changed
             $this->callTrigger(self::SAVED, [$this->_changed]);
             $this->callTrigger(self::SAVE_UPDATED, [$this->_changed]);
             $this->_changed = [];
