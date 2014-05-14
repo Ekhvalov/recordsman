@@ -3,6 +3,13 @@ namespace RecordsMan;
 
 class RecordSet implements \Iterator, \Countable, \ArrayAccess {
 
+    const LOAD_BY_SQL = 1;
+    const LOAD_FROM_RELATION = 2;
+    const LOAD_FROM_CACHE = 3;
+    const LOAD_FROM_FILTER = 4;
+    const LOAD_BY_CONDITION = 5;
+
+    private $_loadMode = 0;
 
     private $_loadingParams = [
         'class'     => '',
@@ -18,17 +25,21 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
     ////////// Opened constructors
 
     public static function create($class, $condition = null, $order = null, $limit = null) {
-        return new self(
+        $set = new self(
             $class,
             ['params' => $condition, 'order' => $order, 'limit' => $limit]
         );
+        $set->_loadMode = self::LOAD_BY_CONDITION;
+        return $set;
     }
 
     public static function createFromSql($class, $sqlQuery, $sqlParams = []) {
-        return new self(
+        $set = new self(
             $class,
             ['sql' => $sqlQuery, 'sqlParams' => $sqlParams]
         );
+        $set->_loadMode = self::LOAD_BY_SQL;
+        return $set;
     }
 
     public static function createFromForeign(Record $record, $foreignClass) {
@@ -37,11 +48,13 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
             throw new RecordsManException("Relation type must be Record::RELATION_MANY", 50);
         }
         $relationParams = $record->getRelationParamsWith($foreignClass);
-        return new self(
+        $set = new self(
             $foreignClass,
             ['relation' => $relationParams],
             $record
         );
+        $set->_loadMode = self::LOAD_FROM_RELATION;
+        return $set;
     }
 
     public static function createFromCache($class, $key) {
@@ -50,15 +63,18 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
         if (is_null($ids)) {
             return null;
         }
-        return new self(
+        $set = new self(
             $class,
             ['cache' => $key, 'ids' => $ids]
         );
+        $set->_loadMode = self::LOAD_FROM_CACHE;
+        return $set;
     }
 
     public static function createEmpty($class) {
         $set = new self($class, 'filter');
         $set->_loadingParams['loaded'] = true;
+        $set->_loadMode = self::LOAD_FROM_FILTER;
         return $set;
     }
 
@@ -134,12 +150,20 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
             if ($counter) {
                 $throughItem->set($relationParams['counter'], $isNew ? 1 : ($throughItem->$counter + 1));
             }
+            $this->_loadingParams['loaded'] = false;
+            if (isset($this->_loadingParams['count'])) {
+                unset($this->_loadingParams['count']);
+            }
             return $throughItem->save();
         } else {
             // One-to-many relation
             $entry->setForeign($initiatorClass, $initiator)->save();
+            if (isset($this->_loadingParams['count'])) {
+                unset($this->_loadingParams['count']);
+            }
             if ($this->_loadingParams['loaded']) {
                 $this->_records[] = $entry;
+                $this->_loadingParams['count'] = count($this->_records);
             }
         }
         return $this;
@@ -162,7 +186,6 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
             : $this->_filterByCondition($conditionOrCallback);
     }
 
-    //TODO: tests
     public function filterFirst($conditionOrCallback) {
         $this->_loadRecords();
         return ($conditionOrCallback instanceof \Closure)
@@ -174,7 +197,6 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
         return ($this->count() == 0);
     }
 
-    //TODO: tests
     public function toArray($neededFields = []) {
         $this->_loadRecords();
         $res = [];
@@ -184,7 +206,6 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
         return $res;
     }
 
-    //TODO: tests
     public function cache($key, $lifetime = null) {
         $cacher = Record::getCacheProvider();
         $cacher->storeRecordSet($this, $key, $lifetime);
@@ -192,54 +213,56 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
     }
 
     /**
-     * @todo Tests
-     *
      * @return Record
      */
     public function shift() {
         $this->_loadRecords();
-        return array_shift($this->_records);
+        $entry = array_shift($this->_records);
+        $this->_loadingParams['count'] = count($this->_records);
+        return $entry;
     }
 
     /**
-     * @todo Tests
-     *
-     * @return self
+     * @param Record $item
+     * @return RecordSet
+     * @throws RecordsManException
      */
     public function prepend(Record $item) {
         if ($item->getQualifiedClassname() != $this->getClassName()) {
             throw new RecordsManException("Can't prepend set of {$this->getClassName()} with item of class {$item->getQualifiedClassname()}");
         }
         array_unshift($this->_records, $item);
+        $this->_loadingParams['count'] = count($this->_records);
         return $this;
     }
 
     /**
-     * @todo Tests
-     *
      * @return Record
      */
     public function pop() {
         $this->_loadRecords();
-        return array_pop($this->_records);
+        $entry = array_pop($this->_records);
+        $this->_loadingParams['count'] = count($this->_records);
+        return $entry;
     }
 
     /**
-     * @todo Tests
-     *
-     * @return self
+     * @param Record $item
+     * @return RecordSet
+     * @throws RecordsManException
      */
     public function append(Record $item) {
         if ($item->getQualifiedClassname() != $this->getClassName()) {
             throw new RecordsManException("Can't append item of class {$item->getQualifiedClassname()} to set of {$this->getClassName()}");
         }
         $this->_records[] = $item;
+        $this->_loadingParams['count'] = count($this->_records);
         return $this;
     }
 
     /**
-     * @todo Tests
-     *
+     * @param $count
+     * @param int $from
      * @return RecordSet
      */
     public function slice($count, $from = 0) {
@@ -254,6 +277,14 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
     ////////// Countable implementation
 
     public function count() {
+        if (isset($this->_loadingParams['count'])) {
+            return $this->_loadingParams['count'];
+        }
+        $count = $this->_tryToPrefetchCount();
+        if (!is_null($count)) {
+            fprintf(STDERR, "[Count prefetched]\n");
+            return $count;
+        }
         $this->_loadRecords();
         return count($this->_records);
     }
@@ -327,58 +358,25 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
         if ($this->_loadingParams['loaded'] && !$forceLoading) {
             return true;
         }
+        fprintf(STDERR, "[Records loading]\n");
         $targetClass = $this->_loadingParams['class'];
         $loadBy = $this->_loadingParams['loadBy'];
         $rows = [];
 
-        switch (true) {
-            // Loading by SQL query
-            case isset($loadBy['sql']):
+        switch($this->_loadMode) {
+
+            case self::LOAD_BY_SQL:
                 $rows = Record::getAdapter()->fetchRows(
                     $loadBy['sql'],
                     isset($loadBy['sqlParams']) ? $loadBy['sqlParams'] : []
                 );
                 break;
 
-            // Loading by relation
-            case isset($loadBy['relation']):
-                $relationParams = $loadBy['relation'];
-                $srcRecord = $this->_loadingParams['initiator'];
-                if (isset($relationParams['through'])) {
-                    // Many-to-many relation
-                    $loader = Record::getLoader();
-                    $srcClass = Helper::qualifyClassName(get_class($srcRecord));
-                    $throughClass = $relationParams['through'];
-                    $throughTab = $loader->getClassTableName($throughClass);
-                    $targetTab = $loader->getClassTableName($targetClass);
-                    $targetThroughRelationParams = $loader->getClassRelationParamsWith($targetClass, $throughClass);
-                    $targetThroughForeignKey = $targetThroughRelationParams['foreignKey'];
-                    $scrThroughRelationParams = $loader->getClassRelationParamsWith($srcClass, $throughClass);
-                    $srcThroughForeignKey = $scrThroughRelationParams['foreignKey'];
-                    //TODO: how to define field prefix in condition?
-                    $queryParams = "{$srcThroughForeignKey}={$srcRecord->get('id')}";
-                    if (array_key_exists('condition', $scrThroughRelationParams)) {
-                        $queryParams = Condition::createAndBlock([$queryParams, $scrThroughRelationParams['condition']]);
-                    }
-                    $sql = Helper::createSelectJoinQuery(
-                        $targetTab,
-                        $throughTab,
-                        $targetThroughForeignKey,
-                        $queryParams
-                    );
-                    $rows = Record::getAdapter()->fetchRows($sql);
-                } else {
-                    // One-to-many relation
-                    $queryParams = "{$relationParams['foreignKey']}={$srcRecord->get('id')}";
-                    if (array_key_exists('condition', $relationParams)) {
-                        $queryParams = Condition::createAndBlock([$queryParams, $relationParams['condition']]);
-                    }
-                    $rows = call_user_func_array([$targetClass, '_select'], [$queryParams]);
-                }
+            case self::LOAD_FROM_RELATION:
+                $rows = $this->_loadRowsByRelation();
                 break;
 
-            // Loading from cache
-            case isset($loadBy['cache']):
+            case self::LOAD_FROM_CACHE:
                 $cacher = Record::getCacheProvider();
                 foreach($loadBy['ids'] as $id) {
                     //TODO: Warning! every record may not exists in the cache!
@@ -386,12 +384,12 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
                 }
                 break;
 
-            // Loading by condition
-            default:
+            case self::LOAD_BY_CONDITION:
                 $params = isset($loadBy['params']) ? $loadBy['params'] : null;
                 $order = isset($loadBy['order']) ? $loadBy['order'] : null;
                 $limit = isset($loadBy['limit']) ? $loadBy['limit'] : null;
                 $rows = call_user_func_array([$targetClass, '_select'], [$params, $order, $limit]);
+                break;
         }
 
         $this->_records = [];
@@ -403,6 +401,98 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
         $this->_loadingParams['loaded'] = true;
         $this->_loadingParams['count'] = count($rows);
         return $this->_loadingParams['count'];
+    }
+
+    private function _loadRowsByRelation($countOnly = false) {
+        $targetClass = $this->_loadingParams['class'];
+        $loadBy = $this->_loadingParams['loadBy'];
+        $relationParams = $loadBy['relation'];
+        $srcRecord = $this->_loadingParams['initiator'];
+        if (isset($relationParams['through'])) {
+            // Many-to-many relation
+            $loader = Record::getLoader();
+            $srcClass = Helper::qualifyClassName(get_class($srcRecord));
+            $throughClass = $relationParams['through'];
+            $throughTab = $loader->getClassTableName($throughClass);
+            $targetTab = $loader->getClassTableName($targetClass);
+            $targetThroughRelationParams = $loader->getClassRelationParamsWith($targetClass, $throughClass);
+            $targetThroughForeignKey = $targetThroughRelationParams['foreignKey'];
+            $scrThroughRelationParams = $loader->getClassRelationParamsWith($srcClass, $throughClass);
+            $srcThroughForeignKey = $scrThroughRelationParams['foreignKey'];
+            //TODO: how to define field prefix in condition?
+            $queryParams = "{$srcThroughForeignKey}={$srcRecord->get('id')}";
+            if (array_key_exists('condition', $scrThroughRelationParams)) {
+                $queryParams = Condition::createAndBlock([$queryParams, $scrThroughRelationParams['condition']]);
+            }
+            if ($countOnly) {
+                $sql = Helper::createSelectCountJoinQuery(
+                    $targetTab,
+                    $throughTab,
+                    $targetThroughForeignKey,
+                    $queryParams
+                );
+                return intval(Record::getAdapter()->fetchSingleValue($sql));
+            }
+            $sql = Helper::createSelectJoinQuery(
+                $targetTab,
+                $throughTab,
+                $targetThroughForeignKey,
+                $queryParams
+            );
+            return Record::getAdapter()->fetchRows($sql);
+        }
+        // One-to-many relation
+        $queryParams = "{$relationParams['foreignKey']}={$srcRecord->get('id')}";
+        if (array_key_exists('condition', $relationParams)) {
+            $queryParams = Condition::createAndBlock([$queryParams, $relationParams['condition']]);
+        }
+        if ($countOnly) {
+            return call_user_func_array([$targetClass, 'count'], [$queryParams]);
+        }
+        return call_user_func_array([$targetClass, '_select'], [$queryParams]);
+    }
+
+    private function _tryToPrefetchCount() {
+        $targetClass = $this->_loadingParams['class'];
+        $loadBy = $this->_loadingParams['loadBy'];
+        switch($this->_loadMode) {
+
+            case self::LOAD_BY_CONDITION:
+                $params = isset($loadBy['params']) ? $loadBy['params'] : null;
+                $totalCount = call_user_func_array([$targetClass, 'count'], [$params]);
+                if ($totalCount == 0) {
+                    $this->_loadingParams['count'] = 0;
+                    return 0;
+                }
+                if (isset($loadBy['limit'])) {
+                    list($from, $count) = $this->_limitAsRange($loadBy['limit']);
+                    if (($from + $count) > $totalCount) {
+                        $count = $totalCount - $from;
+                    }
+                    $this->_loadingParams['count'] = $count;
+                    return $count;
+                }
+                $this->_loadingParams['count'] = $totalCount;
+                return $totalCount;
+
+            case self::LOAD_FROM_RELATION:
+                $this->_loadingParams['count'] = $this->_loadRowsByRelation(true);
+                return $this->_loadingParams['count'];
+
+            case self::LOAD_FROM_CACHE:
+                $this->_loadingParams['count'] = count($loadBy['ids']);
+                return $this->_loadingParams['count'];
+
+            //TODO: self::LOAD_BY_SQL
+        }
+        return null;
+    }
+
+    private function _limitAsRange($limit) {
+        if (is_array($limit)) {
+            return $limit;
+        }
+        return [0, $limit];
     }
 
     private function _filterByCallback(\Closure $callback, $first = false) {

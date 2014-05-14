@@ -80,6 +80,12 @@ class Helper {
         return $sql;
     }
 
+    public static function createSelectCountJoinQuery($targetTab, $joinedTab, $foreignKey, $condition = null, $order = null, $limit = null) {
+        $sql = "SELECT COUNT(*) FROM `{$targetTab}` AS a JOIN `{$joinedTab}` AS b ON a.`id`=b.`{$foreignKey}` ";
+        $sql.= self::createSelectParams($condition, $order, $limit);
+        return $sql;
+    }
+
     public static function createRandomSelectQuery($tableName, $condition = null, $limit = null) {
         $sql = "SELECT * FROM `{$tableName}` ";
         $sql.= self::createSelectParams($condition, 'RAND()', $limit);
