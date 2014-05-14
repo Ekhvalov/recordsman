@@ -9,8 +9,11 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
     const LOAD_FROM_FILTER = 4;
     const LOAD_BY_CONDITION = 5;
 
-    private $_loadMode = 0;
+    const DEFAULT_GENERATOR_PORTION = 500;
 
+    private static $_genPortion = self::DEFAULT_GENERATOR_PORTION;
+
+    private $_loadMode = 0;
     private $_loadingParams = [
         'class'     => '',
         'fields'    => [],
@@ -20,6 +23,11 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
         'count'     => null
     ];
     private $_records = [];
+    private $_gen = null;
+    /**
+     * @var \Generator
+     */
+    private $_currentGen = null;
 
 
     ////////// Opened constructors
@@ -78,6 +86,10 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
         return $set;
     }
 
+    public static function setDefaultPreloadingCount($count) {
+        self::$_genPortion = intval($count) ?: self::DEFAULT_GENERATOR_PORTION;
+    }
+
     public function getClassName() {
         return $this->_loadingParams['class'];
     }
@@ -92,7 +104,10 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
     }
 
     public function reload() {
-        $this->_loadRecords(true);
+        $this->_loadingParams['loaded'] = false;
+        if (isset($this->_loadingParams['count'])) {
+            unset($this->_loadingParams['count']);
+        }
         return $this;
     }
 
@@ -170,9 +185,8 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
     }
 
     public function map(\Closure $callback) {
-        $this->_loadRecords();
-        foreach($this->_records as $index => $record) {
-            if ($callback($index, $record) === false) {
+        foreach($this as $index => $record) {
+            if (call_user_func_array($callback->bindTo($record), [$index, $record]) === false) {
                 break;
             }
         }
@@ -180,14 +194,12 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
     }
 
     public function filter($conditionOrCallback) {
-        $this->_loadRecords();
         return ($conditionOrCallback instanceof \Closure)
             ? $this->_filterByCallback($conditionOrCallback)
             : $this->_filterByCondition($conditionOrCallback);
     }
 
     public function filterFirst($conditionOrCallback) {
-        $this->_loadRecords();
         return ($conditionOrCallback instanceof \Closure)
             ? $this->_filterByCallback($conditionOrCallback, true)
             : $this->_filterByCondition($conditionOrCallback, true);
@@ -198,9 +210,8 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
     }
 
     public function toArray($neededFields = []) {
-        $this->_loadRecords();
         $res = [];
-        foreach($this->_records as $item) {
+        foreach($this as $item) {
             $res[] = $item->toArray($neededFields);
         }
         return $res;
@@ -282,7 +293,7 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
         }
         $count = $this->_tryToPrefetchCount();
         if (!is_null($count)) {
-            fprintf(STDERR, "[Count prefetched]\n");
+            //fprintf(STDERR, "[Count prefetched]\n");
             return $count;
         }
         $this->_loadRecords();
@@ -318,26 +329,39 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
     ////////// Iterator implementation
 
     public function rewind() {
+        if ($this->_tryToCreateGenerator()) {
+            $this->_currentGen = call_user_func($this->_gen);
+            return $this->_currentGen->rewind();
+        }
         $this->_loadRecords();
         return reset($this->_records);
     }
 
     public function next() {
-        $this->_loadRecords();
+        if ($this->_currentGen) {
+            return $this->_currentGen->next();
+        }
         return next($this->_records);
     }
 
     public function valid() {
-        return $this->current();
+        if ($this->_currentGen) {
+            return $this->_currentGen->valid();
+        }
+        return !!$this->current();
     }
 
     public function key() {
-        $this->_loadRecords();
+        if ($this->_currentGen) {
+            return $this->_currentGen->key();
+        }
         return key($this->_records);
     }
 
     public function current() {
-        $this->_loadRecords();
+        if ($this->_currentGen) {
+            return $this->_currentGen->current();
+        }
         return current($this->_records);
     }
 
@@ -358,7 +382,7 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
         if ($this->_loadingParams['loaded'] && !$forceLoading) {
             return true;
         }
-        fprintf(STDERR, "[Records loading]\n");
+        //fprintf(STDERR, "[Records loading]\n");
         $targetClass = $this->_loadingParams['class'];
         $loadBy = $this->_loadingParams['loadBy'];
         $rows = [];
@@ -388,7 +412,7 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
                 $params = isset($loadBy['params']) ? $loadBy['params'] : null;
                 $order = isset($loadBy['order']) ? $loadBy['order'] : null;
                 $limit = isset($loadBy['limit']) ? $loadBy['limit'] : null;
-                $rows = call_user_func_array([$targetClass, '_select'], [$params, $order, $limit]);
+                $rows = $targetClass::_select($params, $order, $limit);
                 break;
         }
 
@@ -403,7 +427,7 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
         return $this->_loadingParams['count'];
     }
 
-    private function _loadRowsByRelation($countOnly = false) {
+    private function _getRelatedRecordsLoader($countOnly = false) {
         $targetClass = $this->_loadingParams['class'];
         $loadBy = $this->_loadingParams['loadBy'];
         $relationParams = $loadBy['relation'];
@@ -431,15 +455,20 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
                     $targetThroughForeignKey,
                     $queryParams
                 );
-                return intval(Record::getAdapter()->fetchSingleValue($sql));
+                return function() use ($sql) {
+                    return intval(Record::getAdapter()->fetchSingleValue($sql));
+                };
             }
-            $sql = Helper::createSelectJoinQuery(
-                $targetTab,
-                $throughTab,
-                $targetThroughForeignKey,
-                $queryParams
-            );
-            return Record::getAdapter()->fetchRows($sql);
+            return function($from = null, $count = null) use ($targetTab, $throughTab, $targetThroughForeignKey, $queryParams) {
+                return Record::getAdapter()->fetchRows(Helper::createSelectJoinQuery(
+                    $targetTab,
+                    $throughTab,
+                    $targetThroughForeignKey,
+                    $queryParams,
+                    null, // order
+                    ($from || $count) ? [$from, $count] : null
+                ));
+            };
         }
         // One-to-many relation
         $queryParams = "{$relationParams['foreignKey']}={$srcRecord->get('id')}";
@@ -447,9 +476,26 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
             $queryParams = Condition::createAndBlock([$queryParams, $relationParams['condition']]);
         }
         if ($countOnly) {
-            return call_user_func_array([$targetClass, 'count'], [$queryParams]);
+            return function() use ($targetClass, $queryParams) {
+                return $targetClass::count($queryParams);
+            };
         }
-        return call_user_func_array([$targetClass, '_select'], [$queryParams]);
+        return function($from = null, $count = null) use ($targetClass, $queryParams) {
+            return call_user_func_array(
+                [$targetClass, '_select'],
+                [$queryParams, null, ($from || $count) ? [$from, $count] : null]
+            );
+        };
+    }
+
+    private function _loadRowsByRelation() {
+        $loader = $this->_getRelatedRecordsLoader();
+        return $loader();
+    }
+
+    private function _getRelatedRowsCount() {
+        $loader = $this->_getRelatedRecordsLoader(true);
+        return $loader();
     }
 
     private function _tryToPrefetchCount() {
@@ -459,7 +505,7 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
 
             case self::LOAD_BY_CONDITION:
                 $params = isset($loadBy['params']) ? $loadBy['params'] : null;
-                $totalCount = call_user_func_array([$targetClass, 'count'], [$params]);
+                $totalCount = $targetClass::count($params);
                 if ($totalCount == 0) {
                     $this->_loadingParams['count'] = 0;
                     return 0;
@@ -476,7 +522,7 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
                 return $totalCount;
 
             case self::LOAD_FROM_RELATION:
-                $this->_loadingParams['count'] = $this->_loadRowsByRelation(true);
+                $this->_loadingParams['count'] = $this->_getRelatedRowsCount();
                 return $this->_loadingParams['count'];
 
             case self::LOAD_FROM_CACHE:
@@ -495,10 +541,68 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
         return [0, $limit];
     }
 
+    private function _tryToCreateGenerator() {
+        if ($this->_gen) {
+            return true;
+        }
+        $possibleModes = [self::LOAD_BY_CONDITION, self::LOAD_FROM_RELATION];
+        if (in_array($this->_loadMode, $possibleModes)) {
+            $this->_gen = $this->_createGenerator();
+            //fprintf(STDERR, "[Generator created]\n");
+            return true;
+        }
+        return false;
+    }
+
+    private function _createGenerator() {
+        $targetClass = $this->_loadingParams['class'];
+        $loadBy = $this->_loadingParams['loadBy'];
+        $limit = isset($loadBy['limit']) ? $this->_limitAsRange($loadBy['limit']) : null;
+        $portion = self::$_genPortion;
+        switch($this->_loadMode) {
+            case self::LOAD_BY_CONDITION:
+                $params = isset($loadBy['params']) ? $loadBy['params'] : null;
+                $order = isset($loadBy['order']) ? $loadBy['order'] : null;
+                $recordsLoader = function($from, $count) use ($targetClass, $params, $order) {
+                    return $targetClass::_select($params, $order, [$from, $count]);
+                };
+                break;
+            case self::LOAD_FROM_RELATION:
+                $recordsLoader = $this->_getRelatedRecordsLoader();
+                break;
+            default:
+                throw new \LogicException("Can't create generator in this load mode");
+        }
+        return function() use ($targetClass, $recordsLoader, $portion, $limit) {
+            $from = $limit ? $limit[0] : 0;
+            $to = $limit ? ($limit[0] + $limit[1]) : false;
+            while(true) {
+                $cnt = $portion;
+                if ($to && (($from + $portion) > $to)) {
+                    $cnt = ($limit[0] + $limit[1]) - $from;
+                }
+                if ($cnt == 0) {
+                    break;
+                }
+                $records = $recordsLoader($from, $cnt);
+                if (empty($records)) {
+                    break;
+                }
+                foreach($records as $r) {
+                    yield $targetClass::_fromArray($r);
+                }
+                if (count($records) < $portion) {
+                    break;
+                }
+                $from += $portion;
+            }
+        };
+    }
+
     private function _filterByCallback(\Closure $callback, $first = false) {
         $newSet = $this->_newSelf();
         $newSet->_loadingParams['loaded'] = true;
-        foreach($this->_records as $record) {
+        foreach($this as $record) {
             if (call_user_func($callback->bindTo($record))) {
                 if ($first) {
                     return $record;
@@ -512,7 +616,7 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
     private function _filterByCondition($condition, $first = false) {
         $newSet = $this->_newSelf();
         $newSet->_loadingParams['loaded'] = true;
-        foreach($this->_records as $record) {
+        foreach($this as $record) {
             if ($record->isMatch($condition)) {
                 if ($first) {
                     return $record;
