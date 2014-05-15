@@ -512,7 +512,9 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
                 }
                 if (isset($loadBy['limit'])) {
                     list($from, $count) = $this->_limitAsRange($loadBy['limit']);
-                    if (($from + $count) > $totalCount) {
+                    if ($from >= $totalCount) {
+                        $count = 0;
+                    } elseif (($from + $count) > $totalCount) {
                         $count = $totalCount - $from;
                     }
                     $this->_loadingParams['count'] = $count;
