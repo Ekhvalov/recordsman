@@ -17,9 +17,9 @@ class ComparsionCondition extends Condition {
         $this->_sign = $sign;
     }
 
-    //TODO: '!~' & ':' operators test
+    //TODO: '!~', '!:', ':' operators test
     public function compile() {
-        if ($this->_sign != ':') {
+        if (($this->_sign != ':') && ($this->_sign != '!:')) {
             $op2 = $this->_escape($this->_op2);
         } else {
             $op2 = $this->_parseAndEscapeBlock($this->_op2);
@@ -33,6 +33,8 @@ class ComparsionCondition extends Condition {
                 return "(`{$this->_op1}` NOT LIKE {$op2})";
             case ':':
                 return "(`{$this->_op1}` IN (" . implode(',', $op2) . "))";
+            case '!:':
+                return "(`{$this->_op1}` NOT IN (" . implode(',', $op2) . "))";
             default:
                 return "(`{$this->_op1}`{$this->_sign}{$op2})";
         }
@@ -60,6 +62,8 @@ class ComparsionCondition extends Condition {
                 return ($itemValue <= $this->_op2);
             case ':':
                 return $this->_testInCond($itemValue);
+            case '!:':
+                return $this->_testNotInCond($itemValue);
             case '~':
                 return $this->_testLikeCond($itemValue);
             case '!~':
@@ -114,9 +118,19 @@ class ComparsionCondition extends Condition {
         return false;
     }
 
+    private function _testNotInCond($value) {
+        $checkValues = explode(',', trim($this->_op2, ' []'));
+        foreach($checkValues as $check) {
+            if ($value == $this->_trimQuotes($check)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     private static function _parseOperands($conditionString) {
         $matches = [];
-        $pattern = '/^(?<op1>\w+)\s*(?<sign>(>=)|(<=)|(!~)|([:=!><~]))\s*(?<op2>\'?.*?\'?)$/';
+        $pattern = '/^(?<op1>\w+)\s*(?<sign>(>=)|(<=)|(!~)|(!:)|([:=!><~]))\s*(?<op2>\'?.*?\'?)$/';
         if (preg_match($pattern, $conditionString, $matches)) {
             return new self($matches['op1'], $matches['op2'], $matches['sign']);
         }
