@@ -24,19 +24,20 @@ class ComparsionCondition extends Condition {
         } else {
             $op2 = $this->_parseAndEscapeBlock($this->_op2);
         }
+        $op1 = ($this->_prefix ? "{$this->_prefix}." : '') . "`{$this->_op1}`";
         switch($this->_sign) {
             case '!':
-                return "(`{$this->_op1}`<>{$op2})";
+                return "({$op1}<>{$op2})";
             case '~':
-                return "(`{$this->_op1}` LIKE {$op2})";
+                return "({$op1} LIKE {$op2})";
             case '!~':
-                return "(`{$this->_op1}` NOT LIKE {$op2})";
+                return "({$op1} NOT LIKE {$op2})";
             case ':':
-                return "(`{$this->_op1}` IN (" . implode(',', $op2) . "))";
+                return "({$op1} IN (" . implode(',', $op2) . "))";
             case '!:':
-                return "(`{$this->_op1}` NOT IN (" . implode(',', $op2) . "))";
+                return "({$op1} NOT IN (" . implode(',', $op2) . "))";
             default:
-                return "(`{$this->_op1}`{$this->_sign}{$op2})";
+                return "({$op1}{$this->_sign}{$op2})";
         }
     }
 
@@ -134,7 +135,8 @@ class ComparsionCondition extends Condition {
         if (preg_match($pattern, $conditionString, $matches)) {
             return new self($matches['op1'], $matches['op2'], $matches['sign']);
         }
-        return PureSqlCondition::create($conditionString);
+        throw new RecordsManException("Condition: can't parse given args");
+        //return PureSqlCondition::create($conditionString);
     }
 
 }

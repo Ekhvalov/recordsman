@@ -7,6 +7,7 @@ class Condition {
     const OPERATOR_AND = 'AND';
 
     protected $_compiled = null;
+    protected $_prefix = '';
 
     public static function create($operands, $boolOperator = self::OPERATOR_AND) {
         if ($operands instanceof Condition) {
@@ -24,6 +25,11 @@ class Condition {
 
     public static function createOrBlock($operands) {
         return self::create($operands, self::OPERATOR_OR);
+    }
+
+    final public function setPrefix($prefix) {
+        $this->_prefix = $prefix;
+        return $this;
     }
 
     final public function toSql() {
@@ -62,6 +68,9 @@ class Condition {
     protected function _argToCondition($arg) {
         if (!($arg instanceof Condition)) {
             $arg = Condition::create($arg);
+            if ($this->_prefix) {
+                $arg->setPrefix($this->_prefix);
+            }
         }
         return $arg;
     }
