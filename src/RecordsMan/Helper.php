@@ -92,6 +92,25 @@ class Helper {
         return $sql;
     }
 
+    public static function selectQueryToCountQuery($sql) {
+        $pattern = '@^\s*select\s+(?P<fields>.*)from(?P<etc>.+)(LIMIT\s+.+)?$@Uis';
+        if (preg_match($pattern, $sql)) {
+            return preg_replace($pattern, "SELECT COUNT(*) FROM\\2", $sql);
+        }
+        return null;
+    }
+
+    public static function extractLimitFromQuery($sql) {
+        $pattern = '@limit\s+((?P<from>\d+)\s*,\s*)?(?P<cnt>\d+)\s*$@is';
+        if (preg_match($pattern, $sql, $matches)) {
+            return [preg_replace($pattern, '', $sql), [
+                isset($matches['from']) ? intval($matches['from']) : 0,
+                intval($matches['cnt'])
+            ]];
+        }
+        return [$sql, null];
+    }
+
     /**
      * Преобразует параметр $orderParam в строку для SQL-запроса
      *

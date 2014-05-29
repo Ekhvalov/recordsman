@@ -527,11 +527,18 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
                 $this->_loadingParams['count'] = $this->_getRelatedRowsCount();
                 return $this->_loadingParams['count'];
 
+            case self::LOAD_BY_SQL:
+                $sql = $loadBy['sql'];
+                $params = $loadBy['sqlParams'];
+                $countSql = Helper::selectQueryToCountQuery($sql);
+                if (!is_null($countSql)) {
+                    return intval(Record::getAdapter()->fetchSingleValue($countSql, $params));
+                }
+                break;
+
             case self::LOAD_FROM_CACHE:
                 $this->_loadingParams['count'] = count($loadBy['ids']);
                 return $this->_loadingParams['count'];
-
-            //TODO: self::LOAD_BY_SQL
         }
         return null;
     }
@@ -547,7 +554,7 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
         if ($this->_gen) {
             return true;
         }
-        $possibleModes = [self::LOAD_BY_CONDITION, self::LOAD_FROM_RELATION];
+        $possibleModes = [self::LOAD_BY_CONDITION, self::LOAD_FROM_RELATION, self::LOAD_BY_SQL];
         if (in_array($this->_loadMode, $possibleModes)) {
             $this->_gen = $this->_createGenerator();
             //fprintf(STDERR, "[Generator created]\n");
@@ -571,6 +578,14 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
                 break;
             case self::LOAD_FROM_RELATION:
                 $recordsLoader = $this->_getRelatedRecordsLoader();
+                break;
+            case self::LOAD_BY_SQL:
+                $sql = $loadBy['sql'];
+                $params = $loadBy['sqlParams'];
+                list($unlimSql, $limit) = Helper::extractLimitFromQuery($sql);
+                $recordsLoader = function($from, $count) use ($unlimSql, $params) {
+                    return Record::getAdapter()->fetchRows("{$unlimSql} LIMIT {$from}, {$count}", $params);
+                };
                 break;
             default:
                 throw new \LogicException("Can't create generator in this load mode");
