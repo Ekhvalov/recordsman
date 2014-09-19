@@ -1,6 +1,9 @@
 <?php
 namespace RecordsMan;
 
+/**
+ * @property int $id
+ */
 abstract class Record {
 
     const RELATION_NONE    = false;
@@ -17,6 +20,7 @@ abstract class Record {
     const DELETED      = 128;
     //Note: don't forget to add trigger def to returned array of self::getDefaultTriggersList() when adding new
 
+    /** @var Loader $_loader */
     private static $_loader = null;
 
     private $_fields = [];
@@ -48,6 +52,7 @@ abstract class Record {
      * @return Record
      */
     public static function create($fields = []) {
+        /** @var Record $record */
         $record = new static(self::getLoader()->getFieldsDefinition(get_called_class()));
         if (!empty($fields) && is_array($fields)) {
             $record->set($fields);
@@ -212,10 +217,10 @@ abstract class Record {
     ////////// Fields manipulating methods
 
     public function get($fieldName) {
-        $context = $this->_getContext();
         if (array_key_exists($fieldName, $this->_fields)) {
             return $this->_fields[$fieldName];
         }
+        $context = $this->_getContext();
         $foreignClass = Helper::getClassNamespace($context) . ucfirst(Helper::getSingular($fieldName));
         if (class_exists($foreignClass)) {
             $relation = $this->getRelationTypeWith($foreignClass);
@@ -226,6 +231,12 @@ abstract class Record {
         return null;
     }
 
+    /**
+     * @param string $fieldNameOrFieldsArray
+     * @param null|mixed $value
+     * @return Record
+     * @throws RecordsManException
+     */
     protected function set($fieldNameOrFieldsArray, $value = null) {
         if (is_array($fieldNameOrFieldsArray)) {
             foreach($fieldNameOrFieldsArray as $fieldName => $fieldValue) {
@@ -233,20 +244,20 @@ abstract class Record {
             }
             return $this;
         }
-        $field = $fieldNameOrFieldsArray;
-        if ($field == 'id') {
+        $fieldName = $fieldNameOrFieldsArray;
+        if ($fieldName == 'id') {
             throw new RecordsManException("Can't change `id` field", 70);
         }
-        $context = $this->_getContext();
-        if ($this->hasOwnField($field)) {
-            if ($this->_fields[$field] != $value) {
-                $this->_fields[$field] = $value;
-                if (!in_array($field, $this->_changed)) {
-                    $this->_changed[] = $field;
+        if ($this->hasOwnField($fieldName)) {
+            if ($this->_fields[$fieldName] != $value) {
+                $this->_fields[$fieldName] = $value;
+                if (!in_array($fieldName, $this->_changed)) {
+                    $this->_changed[] = $fieldName;
                 }
             }
             return $this;
         }
+        $context = $this->_getContext();
         $foreignClass = Helper::getClassNamespace($context) . ucfirst(Helper::getSingular($fieldNameOrFieldsArray));
         if (class_exists($foreignClass)) {
             $relation = $this->getRelationTypeWith($foreignClass);
@@ -309,6 +320,10 @@ abstract class Record {
         return $this;
     }
 
+    /**
+     * @param bool $testRelations
+     * @return Record
+     */
     public function save($testRelations = true) {
         if (!$this->wasChanged()) {
             return $this;
@@ -448,6 +463,7 @@ abstract class Record {
                 $this->set($field, $records->id);
                 break;
             case self::RELATION_MANY:
+                /** @var Record $record */
                 foreach($records as $record) {
                     $record->setForeign($context, $this);
                 }
