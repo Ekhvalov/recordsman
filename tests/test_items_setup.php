@@ -40,11 +40,11 @@ class Item extends Record {
     //TODO: Counters testing
 
     // External field testing
-    use TExternalFields;
-    protected static $externalFields = [
-        'test_items_info' => 'item_id',
-        'test_items_text' => 'item_id'
-    ];
+//    use TExternalFields;
+//    protected static $externalFields = [
+//        'test_items_info' => 'item_id',
+//        'test_items_text' => 'item_id'
+//    ];
 
     /**
      * @param $title
@@ -52,6 +52,10 @@ class Item extends Record {
      */
     public function setTitle($title) {
         return $this->set('title', $title);
+    }
+
+    public function setterTest($value) {
+        return $this->set('setter_test', $value);
     }
 
 }

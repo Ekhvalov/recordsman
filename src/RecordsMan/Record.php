@@ -26,6 +26,7 @@ abstract class Record {
     private $_fields = [];
     private $_foreign = [];
     private $_changed = [];
+    private $_context;
 
 
     ////////// Records loading static methods
@@ -199,6 +200,15 @@ abstract class Record {
         $loader->addClassTrigger($calledClass, $triggerType, $callback);
     }
 
+    /**
+     * @param string $fieldName
+     * @param callable $getter
+     * @param null|\Closure $setter
+     */
+    public static function addComputedField($fieldName, $getter = null, $setter = null) {
+        self::getLoader()->addClassComputedField(get_called_class(), $fieldName, $getter, $setter);
+    }
+
     public function callTrigger($triggerName, $argsArray = []) {
         $context = $this->_getContext();
         array_unshift($argsArray, $triggerName);
@@ -217,10 +227,18 @@ abstract class Record {
     ////////// Fields manipulating methods
 
     public function get($fieldName) {
-        if (array_key_exists($fieldName, $this->_fields)) {
+        $context = $this->_getContext();
+        $callbacks = $this->_getGetterCallbacks($fieldName);
+        if (!empty($callbacks)) {
+            $result = $this->_getFieldOriginalValue($fieldName);
+            foreach ($callbacks as $callback) {
+                $result = $callback($result, $this);
+            }
+            return $result;
+        }
+        if (isset($this->_fields[$fieldName])) {
             return $this->_fields[$fieldName];
         }
-        $context = $this->_getContext();
         $foreignClass = Helper::getClassNamespace($context) . ucfirst(Helper::getSingular($fieldName));
         if (class_exists($foreignClass)) {
             $relation = $this->getRelationTypeWith($foreignClass);
@@ -230,6 +248,20 @@ abstract class Record {
         }
         return null;
     }
+
+    protected function _getGetterCallbacks($fieldName) {
+        return self::getLoader()->getClassComputedFieldGetterCallbacks($this->_getContext(), $fieldName);
+    }
+
+    protected function _getFieldOriginalValue($fieldName) {
+        return (isset($this->_fields[$fieldName])) ? $this->_fields[$fieldName] : null;
+    }
+
+    protected function _getSetterCallbacks($fieldName) {
+        return self::getLoader()->getClassComputedFieldSetterCallbacks($this->_getContext(), $fieldName);
+    }
+
+
 
     /**
      * @param string $fieldNameOrFieldsArray
@@ -247,6 +279,12 @@ abstract class Record {
         $fieldName = $fieldNameOrFieldsArray;
         if ($fieldName == 'id') {
             throw new RecordsManException("Can't change `id` field", 70);
+        }
+        $callbacks = $this->_getSetterCallbacks($fieldName);
+        if (!empty($callbacks)) {
+            foreach ($callbacks as $callback) {
+                $value = $callback($value, $this);
+            }
         }
         if ($this->hasOwnField($fieldName)) {
             if ($this->_fields[$fieldName] != $value) {
@@ -573,7 +611,10 @@ abstract class Record {
     }
 
     protected function _getContext() {
-        return Helper::qualifyClassName(get_class($this));
+        if (!isset($this->_context)) {
+            $this->_context = Helper::qualifyClassName(get_class($this));
+        }
+        return $this->_context;
     }
 
     private function _deleteRelatedRecords() {
