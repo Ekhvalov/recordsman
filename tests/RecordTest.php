@@ -379,69 +379,70 @@ class RecordTest extends DBConnected_TestCase
         $this->assertTrue(Item::find('parent_id = 2')->isEmpty());
     }
 
-    public function testAddComputedField()
+    public function testAddProperty()
     {
         $loader = Item::getLoader();
         $loaderReflection = new \ReflectionClass($loader);
         $classesReflection = $loaderReflection->getProperty('_classes');
         $classesReflection->setAccessible(true);
         $_classes = $classesReflection->getValue($loader);
-        $this->assertFalse(isset($_classes['\Test\Item']['computedFields']['field']['getters']));
-        $this->assertFalse(isset($_classes['\Test\Item']['computedFields']['field']['setters']));
-        Item::addComputedField('field', function() {}, function() {});
+        $this->assertFalse(isset($_classes['\Test\Item']['properties']['field']['getters']));
+        $this->assertFalse(isset($_classes['\Test\Item']['properties']['field']['setters']));
+        Item::addProperty('field', function() {}, function() {});
         $_classes = $classesReflection->getValue($loader);
-        $this->assertTrue(isset($_classes['\Test\Item']['computedFields']['field']['getters']));
-        $this->assertTrue(isset($_classes['\Test\Item']['computedFields']['field']['setters']));
-        $this->assertCount(1, $_classes['\Test\Item']['computedFields']['field']['getters']);
-        $this->assertCount(1, $_classes['\Test\Item']['computedFields']['field']['setters']);
-        Item::addComputedField('field', function() {}, function() {});
+        $this->assertTrue(isset($_classes['\Test\Item']['properties']['field']['getters']));
+        $this->assertTrue(isset($_classes['\Test\Item']['properties']['field']['setters']));
+        $this->assertCount(1, $_classes['\Test\Item']['properties']['field']['getters']);
+        $this->assertCount(1, $_classes['\Test\Item']['properties']['field']['setters']);
+        Item::addProperty('field', function() {}, function() {});
         $_classes = $classesReflection->getValue($loader);
-        $this->assertCount(2, $_classes['\Test\Item']['computedFields']['field']['getters']);
-        $this->assertCount(2, $_classes['\Test\Item']['computedFields']['field']['setters']);
-        $this->assertFalse(isset($_classes['\Test\SubItem']['computedFields']['field']['getters']));
-        $this->assertFalse(isset($_classes['\Test\SubItem']['computedFields']['field']['setters']));
-        SubItem::addComputedField('field', function() {}, function() {});
+        $this->assertCount(2, $_classes['\Test\Item']['properties']['field']['getters']);
+        $this->assertCount(2, $_classes['\Test\Item']['properties']['field']['setters']);
+        $this->assertFalse(isset($_classes['\Test\SubItem']['properties']['field']['getters']));
+        $this->assertFalse(isset($_classes['\Test\SubItem']['properties']['field']['setters']));
+        SubItem::addProperty('field', function() {}, function() {});
         $_classes = $classesReflection->getValue($loader);
-        $this->assertTrue(isset($_classes['\Test\SubItem']['computedFields']['field']['getters']));
-        $this->assertTrue(isset($_classes['\Test\SubItem']['computedFields']['field']['setters']));
-        $this->assertCount(1, $_classes['\Test\SubItem']['computedFields']['field']['getters']);
-        $this->assertCount(1, $_classes['\Test\SubItem']['computedFields']['field']['setters']);
+        $this->assertTrue(isset($_classes['\Test\SubItem']['properties']['field']['getters']));
+        $this->assertTrue(isset($_classes['\Test\SubItem']['properties']['field']['setters']));
+        $this->assertCount(1, $_classes['\Test\SubItem']['properties']['field']['getters']);
+        $this->assertCount(1, $_classes['\Test\SubItem']['properties']['field']['setters']);
     }
 
-    public function testGet_ComputedFields()
+    public function testGetProperty()
     {
         /** @var Item $item */
         $item = Item::load(1);
-        Item::addComputedField('id_info', function() {
+        Item::addProperty('id_info', function() {
             return 'Id of';
         });
-        Item::addComputedField('id_info', function($fieldValue) {
-            return "{$fieldValue} " . Helper::qualifyClassName(get_class($this));
+        Item::addProperty('id_info', function($fieldValue) {
+            return "{$fieldValue} " . get_class($this);
         });
-        Item::addComputedField('id_info', function($fieldValue) {
+        Item::addProperty('id_info', function($fieldValue) {
             /** @var \Test\Item $this */
             return "{$fieldValue} is {$this->id}";
         });
-        $this->assertEquals('Id of \Test\Item is 1', $item->id_info);
+        $this->assertEquals('Id of Test\Item is 1', $item->id_info);
         /** @var SubItem $subItem */
         $subItem = SubItem::load(2);
-        SubItem::addComputedField('id_info', function() {
+        SubItem::addProperty('id_info', function() {
             return '2x id of';
         });
-        SubItem::addComputedField('id_info', function($fieldValue) {
-            return "{$fieldValue} " . Helper::qualifyClassName(get_class($this));
+        SubItem::addProperty('id_info', function($fieldValue) {
+            return "{$fieldValue} " . get_class($this);
         });
-        SubItem::addComputedField('id_info', function($fieldValue) {
+        SubItem::addProperty('id_info', function($fieldValue) {
             /** @var \Test\Item $this */
             return "{$fieldValue} is " . $this->id * 2;
         });
-        $this->assertEquals('2x id of \Test\SubItem is 4', $subItem->id_info);
+        $this->assertEquals('2x id of Test\SubItem is 4', $subItem->id_info);
     }
 
-    public function testSet_ComputedField() {
+    public function testSetProperty()
+    {
         /** @var Item $item */
         $item = Item::load(1);
-        Item::addComputedField('setter_test', null, function($value) {
+        Item::addProperty('setter_test', null, function($value) {
             return $value * 2;
         });
         $this->assertTrue(is_null($item->setter_test));
@@ -449,11 +450,19 @@ class RecordTest extends DBConnected_TestCase
         $this->assertEquals(1 * 2, $item->setter_test);
         $item->setterTest(2);
         $this->assertEquals(2 * 2, $item->setter_test);
-        Item::addComputedField('setter_test', null, function($value) {
-            return "{$value} " . Helper::qualifyClassName(get_class($this));
+        Item::addProperty('setter_test', null, function($value) {
+            return "{$value} " . get_class($this);
         });
         $item->setterTest(2);
-        $this->assertEquals('4 \Test\Item', $item->setter_test);
+        $this->assertEquals('4 Test\Item', $item->setter_test);
+    }
+
+    public function testGetRawFieldValue()
+    {
+        /** @var Item $item */
+        $item = Item::load(1);
+        $this->assertEquals('Item7 (top level)', $item->getRawFieldValue('title'));
+        $this->assertNull($item->getRawFieldValue('test'));
     }
 
 

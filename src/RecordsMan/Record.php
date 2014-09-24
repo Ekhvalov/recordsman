@@ -201,12 +201,12 @@ abstract class Record {
     }
 
     /**
-     * @param string $fieldName
-     * @param callable $getter
+     * @param string $name
+     * @param null|\Closure $getter
      * @param null|\Closure $setter
      */
-    public static function addComputedField($fieldName, $getter = null, $setter = null) {
-        self::getLoader()->addClassComputedField(get_called_class(), $fieldName, $getter, $setter);
+    public static function addProperty($name, $getter = null, $setter = null) {
+        self::getLoader()->addClassProperty(get_called_class(), $name, $getter, $setter);
     }
 
     public function callTrigger($triggerName, $argsArray = []) {
@@ -228,11 +228,10 @@ abstract class Record {
 
     public function get($fieldName) {
         $context = $this->_getContext();
-        if (self::getLoader()->hasClassComputedFieldGetterCallbacks($context, $fieldName)) {
-            $result = $this->_getFieldOriginalValue($fieldName);
+        if (self::getLoader()->hasClassPropertyGetterCallbacks($context, $fieldName)) {
+            $result = $this->getRawFieldValue($fieldName);
             foreach ($this->_getGetterCallbacks($fieldName) as $callback) {
-                $callback = $callback->bindTo($this);
-                $result = $callback($result);
+                $result = call_user_func($callback->bindTo($this), $result);
             }
             return $result;
         }
@@ -249,16 +248,16 @@ abstract class Record {
         return null;
     }
 
-    protected function _getGetterCallbacks($fieldName) {
-        return self::getLoader()->getClassComputedFieldGetterCallbacks($this->_getContext(), $fieldName);
-    }
-
-    protected function _getFieldOriginalValue($fieldName) {
+    public function getRawFieldValue($fieldName) {
         return (isset($this->_fields[$fieldName])) ? $this->_fields[$fieldName] : null;
     }
 
+    protected function _getGetterCallbacks($fieldName) {
+        return self::getLoader()->getClassPropertyGetterCallbacks($this->_getContext(), $fieldName);
+    }
+
     protected function _getSetterCallbacks($fieldName) {
-        return self::getLoader()->getClassComputedFieldSetterCallbacks($this->_getContext(), $fieldName);
+        return self::getLoader()->getClassPropertySetterCallbacks($this->_getContext(), $fieldName);
     }
 
 
@@ -283,8 +282,7 @@ abstract class Record {
         $callbacks = $this->_getSetterCallbacks($fieldName);
         if (!empty($callbacks)) {
             foreach ($callbacks as $callback) {
-                $callback = $callback->bindTo($this);
-                $value = $callback($value);
+                $value = call_user_func($callback->bindTo($this), $value);
             }
         }
         if ($this->hasOwnField($fieldName)) {
