@@ -54,6 +54,7 @@ class Loader {
         }
         $classMeta['fields'] = [];
         $classMeta['triggers'] = [];
+        $classMeta['computedFields'] = [];
         foreach($this->getAdapter()->getTableColumns($classMeta['tableName']) as $columnDef) {
             //TODO: auto detect primary key
             $classMeta['fields'][$columnDef['Field']] = $columnDef['Default'];
@@ -152,6 +153,48 @@ class Loader {
             return [];
         }
         return $this->_classes[$qualifiedName]['triggers'][$triggerName];
+    }
+
+    /**
+     * @param string $className
+     * @param string $fieldName
+     * @param \Closure $getter
+     * @param null|\Closure $setter
+     */
+    public function addClassComputedField($className, $fieldName, $getter = null, $setter = null) {
+        $qualifiedName = $this->registerClass($className);
+        if (!isset($this->_classes[$qualifiedName]['computedFields'][$fieldName])) {
+            $this->_classes[$qualifiedName]['computedFields'][$fieldName]['getters'] = [];
+            $this->_classes[$qualifiedName]['computedFields'][$fieldName]['setters'] = [];
+        }
+        if ($getter instanceof \Closure) {
+            $this->_classes[$qualifiedName]['computedFields'][$fieldName]['getters'][] = $getter;
+        }
+        if ($setter instanceof \Closure) {
+            $this->_classes[$qualifiedName]['computedFields'][$fieldName]['setters'][] = $setter;
+        }
+    }
+
+    /**
+     * @param string $className
+     * @param string $fieldName
+     * @return array array of \Closure(s) or empty array
+     */
+    public function getClassComputedFieldGetterCallbacks($className, $fieldName) {
+        $qualifiedName = $this->registerClass($className);
+        return isset($this->_classes[$qualifiedName]['computedFields'][$fieldName]['getters']) ?
+            $this->_classes[$qualifiedName]['computedFields'][$fieldName]['getters'] : [];
+    }
+
+    /**
+     * @param string $className
+     * @param string $fieldName
+     * @return array array of \Closure(s) or empty array
+     */
+    public function getClassComputedFieldSetterCallbacks($className, $fieldName) {
+        $qualifiedName = $this->registerClass($className);
+        return isset($this->_classes[$qualifiedName]['computedFields'][$fieldName]['setters']) ?
+            $this->_classes[$qualifiedName]['computedFields'][$fieldName]['setters'] : [];
     }
 
     private function _loadTables() {

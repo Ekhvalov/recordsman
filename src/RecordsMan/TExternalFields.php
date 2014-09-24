@@ -9,6 +9,11 @@ trait TExternalFields {
     private $_extFieldsLoaded  = [];
     private $_extFieldsChanged = [];
 
+    /**
+     * @param $fieldNameOrFieldsArray
+     * @param null $value
+     * @return Record
+     */
     public function set($fieldNameOrFieldsArray, $value = null) {
         if ( is_array($fieldNameOrFieldsArray) || $this->hasOwnField($fieldNameOrFieldsArray) || (strpos($fieldNameOrFieldsArray, "external.") === 0) ) {
             return parent::set($fieldNameOrFieldsArray, $value);
