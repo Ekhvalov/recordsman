@@ -228,11 +228,11 @@ abstract class Record {
 
     public function get($fieldName) {
         $context = $this->_getContext();
-        $callbacks = $this->_getGetterCallbacks($fieldName);
-        if (!empty($callbacks)) {
+        if (self::getLoader()->hasClassComputedFieldGetterCallbacks($context, $fieldName)) {
             $result = $this->_getFieldOriginalValue($fieldName);
-            foreach ($callbacks as $callback) {
-                $result = $callback($result, $this);
+            foreach ($this->_getGetterCallbacks($fieldName) as $callback) {
+                $callback = $callback->bindTo($this);
+                $result = $callback($result);
             }
             return $result;
         }
@@ -283,7 +283,8 @@ abstract class Record {
         $callbacks = $this->_getSetterCallbacks($fieldName);
         if (!empty($callbacks)) {
             foreach ($callbacks as $callback) {
-                $value = $callback($value, $this);
+                $callback = $callback->bindTo($this);
+                $value = $callback($value);
             }
         }
         if ($this->hasOwnField($fieldName)) {

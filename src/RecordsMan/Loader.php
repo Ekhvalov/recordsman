@@ -175,6 +175,12 @@ class Loader {
         }
     }
 
+    public function hasClassComputedFieldGetterCallbacks($className, $fieldName) {
+        $qualifiedName = Helper::qualifyClassName($className);
+        return isset($this->_classes[$qualifiedName]['computedFields'][$fieldName]['getters']) &&
+            ($this->_classes[$qualifiedName]['computedFields'][$fieldName]['getters'] > 0);
+    }
+
     /**
      * @param string $className
      * @param string $fieldName

@@ -165,7 +165,15 @@ class LoaderTest extends DBConnected_TestCase
         }
     }
 
-    public function testGetClassComputedFieldGetterCallbacks() {
+    public function testHasClassComputedFieldGetterCallbacks()
+    {
+        $this->assertFalse($this->inst->hasClassComputedFieldGetterCallbacks('\Test\Item', 'has_getter'));
+        $this->inst->addClassComputedField('\Test\Item', 'has_getter', function() {});
+        $this->assertTrue($this->inst->hasClassComputedFieldGetterCallbacks('\Test\Item', 'has_getter'));
+    }
+
+    public function testGetClassComputedFieldGetterCallbacks()
+    {
         $this->assertTrue(is_array($this->inst->getClassComputedFieldGetterCallbacks('\Test\Item', 'getter')));
         $this->assertCount(0, $this->inst->getClassComputedFieldGetterCallbacks('\Test\Item', 'getter'));
         $this->inst->addClassComputedField('\Test\Item', 'getter', function() {});
@@ -174,7 +182,8 @@ class LoaderTest extends DBConnected_TestCase
         $this->assertCount(2, $this->inst->getClassComputedFieldGetterCallbacks('\Test\Item', 'getter'));
     }
 
-    public function testGetClassComputedFieldSetterCallbacks() {
+    public function testGetClassComputedFieldSetterCallbacks()
+    {
         $this->assertTrue(is_array($this->inst->getClassComputedFieldSetterCallbacks('\Test\Item', 'setter')));
         $this->assertCount(0, $this->inst->getClassComputedFieldSetterCallbacks('\Test\Item', 'setter'));
         $this->inst->addClassComputedField('\Test\Item', 'setter', function() {}, function() {});

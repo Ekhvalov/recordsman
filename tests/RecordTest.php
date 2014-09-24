@@ -415,11 +415,12 @@ class RecordTest extends DBConnected_TestCase
         Item::addComputedField('id_info', function() {
             return 'Id of';
         });
-        Item::addComputedField('id_info', function($fieldValue, $record) {
-            return "{$fieldValue} " . Helper::qualifyClassName(get_class($record));
+        Item::addComputedField('id_info', function($fieldValue) {
+            return "{$fieldValue} " . Helper::qualifyClassName(get_class($this));
         });
-        Item::addComputedField('id_info', function($fieldValue, $record) {
-            return "{$fieldValue} is {$record->id}";
+        Item::addComputedField('id_info', function($fieldValue) {
+            /** @var \Test\Item $this */
+            return "{$fieldValue} is {$this->id}";
         });
         $this->assertEquals('Id of \Test\Item is 1', $item->id_info);
         /** @var SubItem $subItem */
@@ -427,11 +428,12 @@ class RecordTest extends DBConnected_TestCase
         SubItem::addComputedField('id_info', function() {
             return '2x id of';
         });
-        SubItem::addComputedField('id_info', function($fieldValue, $record) {
-            return "{$fieldValue} " . Helper::qualifyClassName(get_class($record));
+        SubItem::addComputedField('id_info', function($fieldValue) {
+            return "{$fieldValue} " . Helper::qualifyClassName(get_class($this));
         });
-        SubItem::addComputedField('id_info', function($fieldValue, $record) {
-            return "{$fieldValue} is " . $record->id * 2;
+        SubItem::addComputedField('id_info', function($fieldValue) {
+            /** @var \Test\Item $this */
+            return "{$fieldValue} is " . $this->id * 2;
         });
         $this->assertEquals('2x id of \Test\SubItem is 4', $subItem->id_info);
     }
@@ -447,6 +449,11 @@ class RecordTest extends DBConnected_TestCase
         $this->assertEquals(1 * 2, $item->setter_test);
         $item->setterTest(2);
         $this->assertEquals(2 * 2, $item->setter_test);
+        Item::addComputedField('setter_test', null, function($value) {
+            return "{$value} " . Helper::qualifyClassName(get_class($this));
+        });
+        $item->setterTest(2);
+        $this->assertEquals('4 \Test\Item', $item->setter_test);
     }
 
 
