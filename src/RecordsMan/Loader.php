@@ -175,6 +175,11 @@ class Loader {
         }
     }
 
+    /**
+     * @param string $className
+     * @param string $propertyName
+     * @return bool
+     */
     public function hasClassPropertyGetterCallbacks($className, $propertyName) {
         $qualifiedName = Helper::qualifyClassName($className);
         return isset($this->_classes[$qualifiedName]['properties'][$propertyName]['getters']) &&
@@ -190,6 +195,17 @@ class Loader {
         $qualifiedName = $this->registerClass($className);
         return isset($this->_classes[$qualifiedName]['properties'][$propertyName]['getters']) ?
             $this->_classes[$qualifiedName]['properties'][$propertyName]['getters'] : [];
+    }
+
+    /**
+     * @param string $className
+     * @param string $propertyName
+     * @return bool
+     */
+    public function hasClassPropertySetterCallbacks($className, $propertyName) {
+        $qualifiedName = Helper::qualifyClassName($className);
+        return isset($this->_classes[$qualifiedName]['properties'][$propertyName]['setters']) &&
+            !empty($this->_classes[$qualifiedName]['properties'][$propertyName]['setters']);
     }
 
     /**
