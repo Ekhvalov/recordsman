@@ -54,6 +54,7 @@ class Loader {
         }
         $classMeta['fields'] = [];
         $classMeta['triggers'] = [];
+        $classMeta['properties'] = [];
         foreach($this->getAdapter()->getTableColumns($classMeta['tableName']) as $columnDef) {
             //TODO: auto detect primary key
             $classMeta['fields'][$columnDef['Field']] = $columnDef['Default'];
@@ -152,6 +153,54 @@ class Loader {
             return [];
         }
         return $this->_classes[$qualifiedName]['triggers'][$triggerName];
+    }
+
+    /**
+     * @param string $className
+     * @param string $propertyName
+     * @param null|\Closure $getter
+     * @param null|\Closure $setter
+     */
+    public function addClassProperty($className, $propertyName, $getter = null, $setter = null) {
+        $qualifiedName = $this->registerClass($className);
+        if (!isset($this->_classes[$qualifiedName]['properties'][$propertyName])) {
+            $this->_classes[$qualifiedName]['properties'][$propertyName]['getters'] = [];
+            $this->_classes[$qualifiedName]['properties'][$propertyName]['setters'] = [];
+        }
+        if ($getter instanceof \Closure) {
+            $this->_classes[$qualifiedName]['properties'][$propertyName]['getters'][] = $getter;
+        }
+        if ($setter instanceof \Closure) {
+            $this->_classes[$qualifiedName]['properties'][$propertyName]['setters'][] = $setter;
+        }
+    }
+
+    public function hasClassPropertyGetterCallbacks($className, $propertyName) {
+        $qualifiedName = Helper::qualifyClassName($className);
+        return isset($this->_classes[$qualifiedName]['properties'][$propertyName]['getters']) &&
+            !empty($this->_classes[$qualifiedName]['properties'][$propertyName]['getters']);
+    }
+
+    /**
+     * @param string $className
+     * @param string $propertyName
+     * @return array array of \Closure(s) or empty array
+     */
+    public function getClassPropertyGetterCallbacks($className, $propertyName) {
+        $qualifiedName = $this->registerClass($className);
+        return isset($this->_classes[$qualifiedName]['properties'][$propertyName]['getters']) ?
+            $this->_classes[$qualifiedName]['properties'][$propertyName]['getters'] : [];
+    }
+
+    /**
+     * @param string $className
+     * @param string $propertyName
+     * @return array array of \Closure(s) or empty array
+     */
+    public function getClassPropertySetterCallbacks($className, $propertyName) {
+        $qualifiedName = $this->registerClass($className);
+        return isset($this->_classes[$qualifiedName]['properties'][$propertyName]['setters']) ?
+            $this->_classes[$qualifiedName]['properties'][$propertyName]['setters'] : [];
     }
 
     private function _loadTables() {

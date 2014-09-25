@@ -107,3 +107,16 @@ INSERT INTO `test_related_items` VALUES(1, 'Related Item #1');
 INSERT INTO `test_related_items` VALUES(2, 'Related Item #2');
 INSERT INTO `test_related_items` VALUES(3, 'Related Item #3');
 INSERT INTO `test_related_items` VALUES(4, 'Related Item #4');
+
+DROP TABLE IF EXISTS `item_city`;
+CREATE TABLE `item_city` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `parent_id` INT(11) NOT NULL,
+  `title` varchar(255) NOT NULL,
+  `population` DECIMAL (3, 1) NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY (`parent_id`)
+) ENGINE=MyISAM  DEFAULT CHARSET=utf8;
+
+INSERT INTO `item_city` VALUES(1, 1, 'Saint-Petersburg', '4.5');
+INSERT INTO `item_city` VALUES(2, 2, 'Moscow', '11.5');

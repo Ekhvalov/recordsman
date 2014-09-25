@@ -21,7 +21,7 @@ abstract class DBConnected_TestCase extends \PHPUnit_Framework_TestCase
      */
     public static function setUpBeforeClass()
     {
-        self::$adapter = new MySqlAdapter('127.0.0.1', 'root', '', 'wpframe');
+        self::$adapter = new MySqlAdapter('127.0.0.1', 'root', '', 'recordsman');
         self::$loader = new Loader(self::$adapter);
         Record::setLoader(self::$loader);
         Record::getAdapter()->logging(true);
