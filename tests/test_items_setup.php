@@ -123,4 +123,17 @@ class ItemExt extends Record
 {
     use TExternalFields;
     protected static $tableName = 'test_items';
+
+    public static function init() {
+        ItemExt::addExternalField('cityName', 'item_city', 'title');
+        ItemExt::addExternalField('cityPopulation', 'item_city', 'population');
+    }
+
+    public function setCityName($name) {
+        return $this->set('cityName', $name);
+    }
+
+    public function setPopulation($population) {
+        return $this->set('cityPopulation', $population);
+    }
 }
