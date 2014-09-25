@@ -231,7 +231,7 @@ abstract class Record {
         if (self::getLoader()->hasClassPropertyGetterCallbacks($context, $fieldName)) {
             $result = $this->getRawFieldValue($fieldName);
             foreach ($this->_getGetterCallbacks($fieldName) as $callback) {
-                $result = call_user_func($callback->bindTo($this), $result);
+                $result = call_user_func($callback->bindTo($this, $this), $result);
             }
             return $result;
         }
@@ -279,10 +279,10 @@ abstract class Record {
         if ($fieldName == 'id') {
             throw new RecordsManException("Can't change `id` field", 70);
         }
-        $callbacks = $this->_getSetterCallbacks($fieldName);
-        if (!empty($callbacks)) {
-            foreach ($callbacks as $callback) {
-                $value = call_user_func($callback->bindTo($this), $value);
+        $context = $this->_getContext();
+        if (self::getLoader()->hasClassPropertySetterCallbacks($context, $fieldName)) {
+            foreach ($this->_getSetterCallbacks($fieldName) as $callback) {
+                $value = call_user_func($callback->bindTo($this, $this), $value);
             }
         }
         if ($this->hasOwnField($fieldName)) {
@@ -294,7 +294,6 @@ abstract class Record {
             }
             return $this;
         }
-        $context = $this->_getContext();
         $foreignClass = Helper::getClassNamespace($context) . ucfirst(Helper::getSingular($fieldNameOrFieldsArray));
         if (class_exists($foreignClass)) {
             $relation = $this->getRelationTypeWith($foreignClass);
