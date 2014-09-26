@@ -120,3 +120,16 @@ CREATE TABLE `item_city` (
 
 INSERT INTO `item_city` VALUES(1, 1, 'Saint-Petersburg', '4.5');
 INSERT INTO `item_city` VALUES(2, 2, 'Moscow', '11.5');
+
+DROP TABLE IF EXISTS `item_properties`;
+CREATE TABLE `item_properties` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `parent_id` INT(11) NOT NULL,
+  `sku` INT(11) NOT NULL,
+  `length` DECIMAL (8, 2) NOT NULL DEFAULT '0',
+  `height` DECIMAL (8, 2) NOT NULL DEFAULT '0',
+  `width` DECIMAL (8, 2) NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY (`parent_id`),
+  KEY (`sku`)
+) ENGINE=MyISAM  DEFAULT CHARSET=utf8;

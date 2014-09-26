@@ -5,3 +5,5 @@ DROP TABLE IF EXISTS `test_subitems`;
 DROP TABLE IF EXISTS `test_subsubitems`;
 DROP TABLE IF EXISTS `test_items_relations`;
 DROP TABLE IF EXISTS `test_related_items`;
+DROP TABLE IF EXISTS `item_city`;
+DROP TABLE IF EXISTS `item_properties`;

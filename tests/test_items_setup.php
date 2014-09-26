@@ -127,13 +127,57 @@ class ItemExt extends Record
     public static function init() {
         ItemExt::addExternalField('cityName', 'item_city', 'title');
         ItemExt::addExternalField('cityPopulation', 'item_city', 'population');
+        ItemExt::addExternalField('sku', 'item_properties');
+        ItemExt::addExternalField('length', 'item_properties');
+        ItemExt::addExternalField('width', 'item_properties');
+        ItemExt::addExternalField('height', 'item_properties');
     }
 
+    /**
+     * @param $name
+     * @return ItemExt
+     */
     public function setCityName($name) {
         return $this->set('cityName', $name);
     }
 
+    /**
+     * @param $population
+     * @return ItemExt
+     */
     public function setPopulation($population) {
         return $this->set('cityPopulation', $population);
+    }
+
+    /**
+     * @param $sku
+     * @return ItemExt
+     */
+    public function setSku($sku) {
+        return $this->set('sku', $sku);
+    }
+
+    /**
+     * @param $length
+     * @return ItemExt
+     */
+    public function setLength($length) {
+        return $this->set('length', $length);
+    }
+
+    /**
+     * @param $height
+     * @return ItemExt
+     */
+    public function setHeight($height) {
+        return $this->set('height', $height);
+    }
+
+    /**
+     * @param $width
+     * @return ItemExt
+     */
+    public function setWidth($width) {
+        return $this->set('width', $width);
     }
 }

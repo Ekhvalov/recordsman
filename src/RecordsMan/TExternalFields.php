@@ -14,6 +14,9 @@ trait TExternalFields
         self::addProperty($fieldName, _createGetter($fieldName), _createSetter($fieldName));
     }
 
+    /**
+     * @return Record|TExternalFields
+     */
     public function saveExternalFields() {
         foreach ($this->_externalFieldsChanged as $tableName => $keysValues) {
             $sql = $this->_getInsertSql($tableName, array_keys($keysValues));
@@ -25,6 +28,7 @@ trait TExternalFields
             Record::getAdapter()->query($sql, $params);
             unset($this->_externalFieldsChanged[$tableName]);
         }
+        return $this;
     }
 
     private function _getInsertSql($tableName, $colNames) {
@@ -59,8 +63,8 @@ function _createGetter($fieldName) {
             $tableName = self::$_externalFields[$fieldName]['table'];
             $fieldKey = self::$_externalFields[$fieldName]['fieldKey'];
             $sql = "SELECT `{$fieldKey}` FROM `{$tableName}` WHERE `parent_id`=?";
-            $this->_externalFieldsCache[$fieldName] = Record::getAdapter()
-                ->fetchSingleValue($sql, [$this->id]);
+            $result = Record::getAdapter()->fetchSingleValue($sql, [$this->id]);
+            $this->_externalFieldsCache[$fieldName] = ($result === false) ? null : $result;
         }
         return $this->_externalFieldsCache[$fieldName];
     };
