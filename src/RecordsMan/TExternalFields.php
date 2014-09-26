@@ -9,6 +9,11 @@ trait TExternalFields
     private $_parentId = 'parent_id';
     private static $_initialized = false;
 
+    /**
+     * @param string $fieldName Human readable field name
+     * @param string $tableName Table name
+     * @param null|string $fieldKey Column name in table (if null then $fieldName)
+     */
     public static function addExternalField($fieldName, $tableName, $fieldKey = null) {
         if (!self::$_initialized) {
             self::_externalFieldsInit();
@@ -101,7 +106,7 @@ function _createGetter($fieldName) {
 
 function _createSetter($fieldName) {
     return function($value) use ($fieldName) {
-        /** @var $this Record|TExternalFields */
+        /** @var Record|TExternalFields $this */
         $this->_externalFieldsCache[$fieldName] = $value;
         $this->_externalFieldsChanged[$this->_getTableName($fieldName)][$this->_getFieldKey($fieldName)] = $value;
         return $value;
