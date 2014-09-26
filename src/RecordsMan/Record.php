@@ -202,8 +202,8 @@ abstract class Record {
 
     /**
      * @param string $name
-     * @param null|\Closure $getter
-     * @param null|\Closure $setter
+     * @param null|\Closure $getter Non-static scope closure
+     * @param null|\Closure $setter Non-static scope closure
      */
     public static function addProperty($name, $getter = null, $setter = null) {
         self::getLoader()->addClassProperty(get_called_class(), $name, $getter, $setter);
