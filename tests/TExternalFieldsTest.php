@@ -8,53 +8,64 @@ class TExternalFieldsTest extends DBConnected_TestCase
 
     public function testAddExternalField()
     {
-        $this->assertClassHasStaticAttribute('_externalFields', '\Test\ItemExt');
+        $this->assertClassHasStaticAttribute('_fieldTable', '\Test\ItemExt');
+        $this->assertClassHasStaticAttribute('_tableForeignKey', '\Test\ItemExt');
         $itemExtReflection = new \ReflectionClass('\Test\ItemExt');
-        $tablesReflection = $itemExtReflection->getProperty('_externalFields');
+        $fieldsReflection = $itemExtReflection->getProperty('_fieldTable');
+        $fieldsReflection->setAccessible(true);
+        $this->assertTrue(is_array($fieldsReflection->getValue()));
+        $this->assertCount(0, $fieldsReflection->getValue());
+        $tablesReflection = $itemExtReflection->getProperty('_tableForeignKey');
         $tablesReflection->setAccessible(true);
         $this->assertTrue(is_array($tablesReflection->getValue()));
         $this->assertCount(0, $tablesReflection->getValue());
         ItemExt::init();
-        $this->assertCount(6, $tablesReflection->getValue());
-        $this->assertTrue(isset($tablesReflection->getValue()['cityName']));
-        $this->assertEquals('item_city', $tablesReflection->getValue()['cityName']['table']);
-        $this->assertEquals('title', $tablesReflection->getValue()['cityName']['fieldKey']);
+        $this->assertCount(6, $fieldsReflection->getValue());
+        $this->assertTrue(isset($fieldsReflection->getValue()['city_name']));
+        $this->assertTrue(isset($fieldsReflection->getValue()['city_population']));
+        $this->assertTrue(isset($fieldsReflection->getValue()['sku']));
+        $this->assertTrue(isset($fieldsReflection->getValue()['length']));
+        $this->assertTrue(isset($fieldsReflection->getValue()['width']));
+        $this->assertTrue(isset($fieldsReflection->getValue()['height']));
+        $this->assertCount(2, $tablesReflection->getValue());
+        $this->assertTrue(isset($tablesReflection->getValue()['item_city']));
+        $this->assertTrue(isset($tablesReflection->getValue()['item_properties']));
     }
 
     public function testAddExternalField_Get()
     {
         $itemExt = ItemExt::load(1);
-        $this->assertEquals('Saint-Petersburg', $itemExt->cityName);
-        $this->assertEquals('4.5', $itemExt->cityPopulation);
+        $this->assertEquals('Saint-Petersburg', $itemExt->city_name);
+        $this->assertEquals('4.5', $itemExt->city_population);
         $itemExt = ItemExt::load(2);
-        $this->assertEquals('Moscow', $itemExt->cityName);
-        $this->assertEquals('11.5', $itemExt->cityPopulation);
+        $this->assertEquals('Moscow', $itemExt->city_name);
+        $this->assertEquals('11.5', $itemExt->city_population);
     }
 
     public function testAddExternalField_Set()
     {
         /** @var TExternalFields|ItemExt $itemExt */
         $itemExt = ItemExt::load(1);
-        $this->assertEquals('Saint-Petersburg', $itemExt->cityName);
-        $this->assertEquals('4.5', $itemExt->cityPopulation);
+        $this->assertEquals('Saint-Petersburg', $itemExt->city_name);
+        $this->assertEquals('4.5', $itemExt->city_population);
         $itemExt->setCityName('Leningrad');
         $itemExt->setPopulation(4.8);
-        $this->assertEquals('Leningrad', $itemExt->cityName);
-        $this->assertEquals('4.8', $itemExt->cityPopulation);
+        $this->assertEquals('Leningrad', $itemExt->city_name);
+        $this->assertEquals('4.8', $itemExt->city_population);
     }
 
     public function testAddExternalField_Save()
     {
         /** @var TExternalFields|ItemExt $itemExt */
         $itemExt = ItemExt::load(1);
-        $this->assertEquals('Saint-Petersburg', $itemExt->cityName);
-        $this->assertEquals('4.5', $itemExt->cityPopulation);
+        $this->assertEquals('Saint-Petersburg', $itemExt->city_name);
+        $this->assertEquals('4.5', $itemExt->city_population);
         $itemExt->setCityName('Leningrad');
         $itemExt->setPopulation(4.8);
         $itemExt->save();
         $itemExt = ItemExt::load(1);
-        $this->assertEquals('Leningrad', $itemExt->cityName);
-        $this->assertEquals('4.8', $itemExt->cityPopulation);
+        $this->assertEquals('Leningrad', $itemExt->city_name);
+        $this->assertEquals('4.8', $itemExt->city_population);
         $this->assertNull($itemExt->sku);
         $this->assertNull($itemExt->length);
         $this->assertNull($itemExt->height);
@@ -64,8 +75,8 @@ class TExternalFieldsTest extends DBConnected_TestCase
             ->setPopulation(4.9)
             ->save();
         $itemExt = ItemExt::load(1);
-        $this->assertEquals('Saint-Petersburg', $itemExt->cityName);
-        $this->assertEquals(4.9, $itemExt->cityPopulation);
+        $this->assertEquals('Saint-Petersburg', $itemExt->city_name);
+        $this->assertEquals(4.9, $itemExt->city_population);
         $this->assertEquals(1, $itemExt->sku);
         $this->assertEquals(11.3, $itemExt->length);
         $this->assertEquals(155, $itemExt->width);
@@ -84,16 +95,16 @@ class TExternalFieldsTest extends DBConnected_TestCase
     {
         /** @var TExternalFields|ItemExt $itemExt */
         $itemExt = ItemExt::load(1);
-        $this->assertEquals('Saint-Petersburg', $itemExt->cityName);
-        $this->assertEquals(4.9, $itemExt->cityPopulation);
+        $this->assertEquals('Saint-Petersburg', $itemExt->city_name);
+        $this->assertEquals(4.9, $itemExt->city_population);
         $this->assertEquals(1, $itemExt->sku);
         $this->assertEquals(11.3, $itemExt->length);
         $this->assertEquals(155, $itemExt->width);
         $this->assertEquals(14, $itemExt->height);
         $itemExt->callTrigger(Record::DELETED);
         $itemExt = ItemExt::load(1);
-        $this->assertNull($itemExt->cityName);
-        $this->assertNull($itemExt->cityPopulation);
+        $this->assertNull($itemExt->city_name);
+        $this->assertNull($itemExt->city_population);
         $this->assertNull($itemExt->sku);
         $this->assertNull($itemExt->length);
         $this->assertNull($itemExt->height);

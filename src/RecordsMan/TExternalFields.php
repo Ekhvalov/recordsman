@@ -3,24 +3,26 @@ namespace RecordsMan;
 
 trait TExternalFields
 {
-    private static $_externalFields = [];
+    private static $_fieldTable = [];
+    private static $_tableForeignKey = [];
+    private static $_initialized = false;
+    private static $_foreignKey;
+
     private $_externalFieldsCache = [];
     private $_externalFieldsChanged = [];
-    private $_parentId = 'parent_id';
-    private static $_initialized = false;
 
     /**
      * @param string $fieldName Human readable field name
      * @param string $tableName Table name
-     * @param null|string $fieldKey Column name in table (if null then $fieldName)
+     * @param null|string $foreignKey if null then {class_name}_id
      */
-    public static function addExternalField($fieldName, $tableName, $fieldKey = null) {
+    public static function addExternalField($fieldName, $tableName, $foreignKey = null) {
         if (!self::$_initialized) {
             self::_externalFieldsInit();
             self::$_initialized = true;
         }
-        self::$_externalFields[$fieldName]['table'] = $tableName;
-        self::$_externalFields[$fieldName]['fieldKey'] = $fieldKey ?: $fieldName;
+        self::$_fieldTable[$fieldName] = $tableName;
+        self::$_tableForeignKey[$tableName] = self::_getForeignKey($foreignKey);
         self::addProperty($fieldName, _createGetter($fieldName), _createSetter($fieldName));
     }
 
@@ -33,12 +35,23 @@ trait TExternalFields
         });
     }
 
+    private static function _getForeignKey($foreignKey) {
+        if (!is_null($foreignKey)) {
+            return $foreignKey;
+        }
+        if (!isset(self::$_foreignKey)) {
+            $foreignKey =  Helper::ucFirstToUnderscore(array_pop(explode('\\', get_class())));
+            self::$_foreignKey = "{$foreignKey}_id";
+        }
+        return self::$_foreignKey;
+    }
+
     private function _saveExternalFields() {
-        foreach ($this->_externalFieldsChanged as $tableName => $keysValues) {
-            $sql = $this->_getInsertSql($tableName, array_keys($keysValues));
+        foreach ($this->_externalFieldsChanged as $tableName => $fieldsValues) {
+            $sql = $this->_getInsertSql($tableName, array_keys($fieldsValues));
             /** @var Record|TExternalFields $this */
-            $params = [":{$this->_parentId}" => $this->id];
-            foreach ($keysValues as $placeholder => $value) {
+            $params = [":{$this->_getTableForeignKey($tableName)}" => $this->id];
+            foreach ($fieldsValues as $placeholder => $value) {
                 $params[":{$placeholder}"] = $value;
             }
             Record::getAdapter()->query($sql, $params);
@@ -56,36 +69,25 @@ trait TExternalFields
         $onDuplicate = implode(',', array_map(function($colName) {
             return "`{$colName}`=:{$colName}";
         }, $colNames));
-        $sql = "INSERT INTO `{$tableName}` (`{$this->_parentId}`,{$keys}) VALUES (:{$this->_parentId},{$placeholders}) ";
+        $foreignKey = $this->_getTableForeignKey($tableName);
+        $sql = "INSERT INTO `{$tableName}` (`{$foreignKey}`,{$keys}) VALUES (:{$foreignKey},{$placeholders}) ";
         $sql.= "ON DUPLICATE KEY UPDATE {$onDuplicate};";
         return $sql;
     }
 
-    private function _getTableName($fieldName) {
-        return self::$_externalFields[$fieldName]['table'];
+    private function _getFieldTableName($fieldName) {
+        return self::$_fieldTable[$fieldName];
     }
 
-    private function _getFieldKey($fieldName) {
-        return self::$_externalFields[$fieldName]['fieldKey'];
+    private function _getTableForeignKey($tableName) {
+        return self::$_tableForeignKey[$tableName];
     }
 
     private function _deleteExternalFields($id) {
-        foreach ($this->_getTableNames() as $tableName) {
-            $this->_deleteExternalRow($tableName, $id);
+        foreach (self::$_tableForeignKey as $tableName => $foreignKey) {
+            $sql = "DELETE FROM `{$tableName}` WHERE `{$foreignKey}`='{$id}' LIMIT 1";
+            Record::getAdapter()->query($sql);
         }
-    }
-
-    private function _getTableNames() {
-        $tableNames = [];
-        foreach (self::$_externalFields as $fieldName => $fieldData) {
-            $tableNames[$this->_getTableName($fieldName)] = '';
-        }
-        return array_keys($tableNames);
-    }
-
-    private function _deleteExternalRow($tableName, $rowId) {
-        $sql = "DELETE FROM `{$tableName}` WHERE `{$this->_parentId}`='{$rowId}' LIMIT 1";
-        Record::getAdapter()->query($sql);
     }
 
 }
@@ -94,9 +96,9 @@ function _createGetter($fieldName) {
     return function() use ($fieldName) {
         /** @var Record|TExternalFields $this */
         if (!isset($this->_externalFieldsCache[$fieldName])) {
-            $tableName = self::$_externalFields[$fieldName]['table'];
-            $fieldKey = self::$_externalFields[$fieldName]['fieldKey'];
-            $sql = "SELECT `{$fieldKey}` FROM `{$tableName}` WHERE `parent_id`=?";
+            $tableName = self::$_fieldTable[$fieldName];
+            $foreignKey = self::$_tableForeignKey[$tableName];
+            $sql = "SELECT `{$fieldName}` FROM `{$tableName}` WHERE `{$foreignKey}`=?";
             $result = Record::getAdapter()->fetchSingleValue($sql, [$this->id]);
             $this->_externalFieldsCache[$fieldName] = ($result === false) ? null : $result;
         }
@@ -108,7 +110,8 @@ function _createSetter($fieldName) {
     return function($value) use ($fieldName) {
         /** @var Record|TExternalFields $this */
         $this->_externalFieldsCache[$fieldName] = $value;
-        $this->_externalFieldsChanged[$this->_getTableName($fieldName)][$this->_getFieldKey($fieldName)] = $value;
+        $tableName = $this->_getFieldTableName($fieldName);
+        $this->_externalFieldsChanged[$tableName][$fieldName] = $value;
         return $value;
     };
 }
