@@ -51,7 +51,7 @@ class TExternalFieldsTest extends DBConnected_TestCase
         $this->assertEquals('4.5', $itemExt->cityPopulation);
         $itemExt->setCityName('Leningrad');
         $itemExt->setPopulation(4.8);
-        $itemExt->saveExternalFields();
+        $itemExt->save();
         $itemExt = ItemExt::load(1);
         $this->assertEquals('Leningrad', $itemExt->cityName);
         $this->assertEquals('4.8', $itemExt->cityPopulation);
@@ -62,7 +62,7 @@ class TExternalFieldsTest extends DBConnected_TestCase
         $itemExt->setSku(1)->setLength(11.3)->setWidth(155)->setHeight(14)
             ->setCityName('Saint-Petersburg')
             ->setPopulation(4.9)
-            ->saveExternalFields();
+            ->save();
         $itemExt = ItemExt::load(1);
         $this->assertEquals('Saint-Petersburg', $itemExt->cityName);
         $this->assertEquals(4.9, $itemExt->cityPopulation);
@@ -72,12 +72,32 @@ class TExternalFieldsTest extends DBConnected_TestCase
         $this->assertEquals(14, $itemExt->height);
         /** @var TExternalFields|ItemExt $itemExt4 */
         $itemExt4 = ItemExt::load(4);
-        $itemExt4->setSku(4)->setLength(11.3)->setWidth(155)->setHeight(14)->saveExternalFields();
+        $itemExt4->setSku(4)->setLength(11.3)->setWidth(155)->setHeight(14)->save();
         $itemExt4 = ItemExt::load(4);
         $this->assertEquals(4, $itemExt4->sku);
         $this->assertEquals(11.3, $itemExt4->length);
         $this->assertEquals(155, $itemExt4->width);
         $this->assertEquals(14, $itemExt4->height);
+    }
+
+    public function testAddExternalField_Drop()
+    {
+        /** @var TExternalFields|ItemExt $itemExt */
+        $itemExt = ItemExt::load(1);
+        $this->assertEquals('Saint-Petersburg', $itemExt->cityName);
+        $this->assertEquals(4.9, $itemExt->cityPopulation);
+        $this->assertEquals(1, $itemExt->sku);
+        $this->assertEquals(11.3, $itemExt->length);
+        $this->assertEquals(155, $itemExt->width);
+        $this->assertEquals(14, $itemExt->height);
+        $itemExt->callTrigger(Record::DELETED);
+        $itemExt = ItemExt::load(1);
+        $this->assertNull($itemExt->cityName);
+        $this->assertNull($itemExt->cityPopulation);
+        $this->assertNull($itemExt->sku);
+        $this->assertNull($itemExt->length);
+        $this->assertNull($itemExt->height);
+        $this->assertNull($itemExt->width);
     }
 
 

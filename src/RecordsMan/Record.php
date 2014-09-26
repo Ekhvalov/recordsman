@@ -214,6 +214,9 @@ abstract class Record {
         array_unshift($argsArray, $triggerName);
         array_unshift($argsArray, $this);
         $result = null;
+        if ($triggerName == self::DELETED) {
+            $argsArray[] = $this->id;
+        }
         foreach(self::getLoader()->getClassTriggersCallbacks($context, $triggerName) as $callback) {
             $result = call_user_func_array($callback, $argsArray);
             if ($result === false) {
@@ -361,10 +364,10 @@ abstract class Record {
      * @return Record
      */
     public function save($testRelations = true) {
-        if (!$this->wasChanged()) {
+        if ($this->callTrigger(self::SAVE, [$this->_changed]) === false) {
             return $this;
         }
-        if ($this->callTrigger(self::SAVE, [$this->_changed]) === false) {
+        if (!$this->wasChanged()) {
             return $this;
         }
         $thisId = $this->get('id');

@@ -8,16 +8,23 @@ trait TExternalFields
     private $_externalFieldsChanged = [];
     private $_parentId = 'parent_id';
 
+    public static function externalFieldsInit() {
+        self::addTrigger(self::SAVE, function(self $record) {
+            $record->_saveExternalFields();
+        });
+
+        self::addTrigger(self::DELETED, function(self $record, $triggerName, $id) {
+            $record->_deleteExternalFields($id);
+        });
+    }
+
     public static function addExternalField($fieldName, $tableName, $fieldKey = null) {
         self::$_externalFields[$fieldName]['table'] = $tableName;
         self::$_externalFields[$fieldName]['fieldKey'] = $fieldKey ?: $fieldName;
         self::addProperty($fieldName, _createGetter($fieldName), _createSetter($fieldName));
     }
 
-    /**
-     * @return Record|TExternalFields
-     */
-    public function saveExternalFields() {
+    private function _saveExternalFields() {
         foreach ($this->_externalFieldsChanged as $tableName => $keysValues) {
             $sql = $this->_getInsertSql($tableName, array_keys($keysValues));
             /** @var Record|TExternalFields $this */
@@ -28,7 +35,6 @@ trait TExternalFields
             Record::getAdapter()->query($sql, $params);
             unset($this->_externalFieldsChanged[$tableName]);
         }
-        return $this;
     }
 
     private function _getInsertSql($tableName, $colNames) {
@@ -52,6 +58,25 @@ trait TExternalFields
 
     private function _getFieldKey($fieldName) {
         return self::$_externalFields[$fieldName]['fieldKey'];
+    }
+
+    private function _deleteExternalFields($id) {
+        foreach ($this->_getTableNames() as $tableName) {
+            $this->_deleteExternalRow($tableName, $id);
+        }
+    }
+
+    private function _getTableNames() {
+        $tableNames = [];
+        foreach (self::$_externalFields as $fieldName => $fieldData) {
+            $tableNames[$this->_getTableName($fieldName)] = '';
+        }
+        return array_keys($tableNames);
+    }
+
+    private function _deleteExternalRow($tableName, $rowId) {
+        $sql = "DELETE FROM `{$tableName}` WHERE `{$this->_parentId}`='{$rowId}' LIMIT 1";
+        Record::getAdapter()->query($sql);
     }
 
 }
