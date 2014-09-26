@@ -224,7 +224,7 @@ class Helper {
     }
 
     public static function extractTableNameFromClassName($str) {
-        $name = self::_ucFirstToUnderscore($str);
+        $name = self::ucFirstToUnderscore($str);
         $name = self::pluralize($name);
         return $name;
     }
@@ -232,7 +232,7 @@ class Helper {
     public static function extractClassNameFromTableName($tabName, $namespace = '') {
         $pattern = '@_(?P<first>\w)@';
         if ($namespace) {
-            $nsPart = self::_ucFirstToUnderscore($namespace);
+            $nsPart = self::ucFirstToUnderscore($namespace);
             if (strpos($tabName, $nsPart) === 0) {
                 $tabName = substr($tabName, strlen($nsPart));
             }
@@ -244,7 +244,7 @@ class Helper {
 
     }
 
-    private static function _ucFirstToUnderscore($str) {
+    public static function ucFirstToUnderscore($str) {
         $name = '\\' . ltrim($str, '\\');
         $name = preg_replace_callback('@\\\\([A-Z])@', function($matches) {
             return '\\' . strtolower($matches[1]);

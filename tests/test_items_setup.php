@@ -125,8 +125,8 @@ class ItemExt extends Record
     protected static $tableName = 'test_items';
 
     public static function init() {
-        ItemExt::addExternalField('cityName', 'item_city', 'title');
-        ItemExt::addExternalField('cityPopulation', 'item_city', 'population');
+        ItemExt::addExternalField('city_name', 'item_city');
+        ItemExt::addExternalField('city_population', 'item_city');
         ItemExt::addExternalField('sku', 'item_properties');
         ItemExt::addExternalField('length', 'item_properties');
         ItemExt::addExternalField('width', 'item_properties');
@@ -138,7 +138,7 @@ class ItemExt extends Record
      * @return ItemExt
      */
     public function setCityName($name) {
-        return $this->set('cityName', $name);
+        return $this->set('city_name', $name);
     }
 
     /**
@@ -146,7 +146,7 @@ class ItemExt extends Record
      * @return ItemExt
      */
     public function setPopulation($population) {
-        return $this->set('cityPopulation', $population);
+        return $this->set('city_population', $population);
     }
 
     /**

@@ -3,4 +3,4 @@ recordsman
 
 RecordsMan - simple ORM PHP library (ActiveRecord based)
 
-Requires PHP 5.4+
+Requires PHP 5.5+
