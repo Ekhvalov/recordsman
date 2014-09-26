@@ -1,169 +1,114 @@
 <?php
 namespace RecordsMan;
 
-trait TExternalFields {
-
-    private static $_extFieldsDefinition = [];
-    private static $_extFieldsDefsLoaded = false;
-
-    private $_extFieldsLoaded  = [];
-    private $_extFieldsChanged = [];
+trait TExternalFields
+{
+    private static $_externalFields = [];
+    private $_externalFieldsCache = [];
+    private $_externalFieldsChanged = [];
+    private $_parentId = 'parent_id';
+    private static $_initialized = false;
 
     /**
-     * @param $fieldNameOrFieldsArray
-     * @param null $value
-     * @return Record
+     * @param string $fieldName Human readable field name
+     * @param string $tableName Table name
+     * @param null|string $fieldKey Column name in table (if null then $fieldName)
      */
-    public function set($fieldNameOrFieldsArray, $value = null) {
-        if ( is_array($fieldNameOrFieldsArray) || $this->hasOwnField($fieldNameOrFieldsArray) || (strpos($fieldNameOrFieldsArray, "external.") === 0) ) {
-            return parent::set($fieldNameOrFieldsArray, $value);
+    public static function addExternalField($fieldName, $tableName, $fieldKey = null) {
+        if (!self::$_initialized) {
+            self::_externalFieldsInit();
+            self::$_initialized = true;
         }
-        $fieldName = $fieldNameOrFieldsArray;
-        $def = $this->_getExtFieldDef($fieldName);
-        if ($def) {
-            if (!$this->_isExtValuesLoaded($def['tabName'])) {
-                $this->_loadExtFieldsValues($fieldName);
+        self::$_externalFields[$fieldName]['table'] = $tableName;
+        self::$_externalFields[$fieldName]['fieldKey'] = $fieldKey ?: $fieldName;
+        self::addProperty($fieldName, _createGetter($fieldName), _createSetter($fieldName));
+    }
+
+    private static function _externalFieldsInit() {
+        self::addTrigger(self::SAVE, function(self $record) {
+            $record->_saveExternalFields();
+        });
+        self::addTrigger(self::DELETED, function(self $record, $triggerName, $id) {
+            $record->_deleteExternalFields($id);
+        });
+    }
+
+    private function _saveExternalFields() {
+        foreach ($this->_externalFieldsChanged as $tableName => $keysValues) {
+            $sql = $this->_getInsertSql($tableName, array_keys($keysValues));
+            /** @var Record|TExternalFields $this */
+            $params = [":{$this->_parentId}" => $this->id];
+            foreach ($keysValues as $placeholder => $value) {
+                $params[":{$placeholder}"] = $value;
             }
-            if (!in_array($def['tabName'], $this->_extFieldsChanged)) {
-                $this->_extFieldsChanged[] = $def['tabName'];
-            }
-            return parent::set("external.{$fieldName}", $value);
+            Record::getAdapter()->query($sql, $params);
+            unset($this->_externalFieldsChanged[$tableName]);
         }
-        return parent::set($fieldName, $value);
     }
 
-    public function get($fieldName) {
-        try {
-            return parent::get($fieldName);
-        } catch (\RecordsMan\RecordsManException $e) {
-            $def = $this->_getExtFieldDef($fieldName);
-            if ($def) {
-                if (!$this->_isExtValuesLoaded($def['tabName'])) {
-                    $this->_loadExtFieldsValues($fieldName);
-                }
-                return parent::get("external.{$fieldName}");
-            }
-        }
-        $context = get_class($this);
-        throw new RecordsManException("Field {$fieldName} are not exists in class {$context}", 40);
+    private function _getInsertSql($tableName, $colNames) {
+        $keys = implode(',', array_map(function($colName) {
+            return "`{$colName}`";
+        }, $colNames));
+        $placeholders = implode(',', array_map(function($placeholder) {
+            return ":{$placeholder}";
+        }, $colNames));
+        $onDuplicate = implode(',', array_map(function($colName) {
+            return "`{$colName}`=:{$colName}";
+        }, $colNames));
+        $sql = "INSERT INTO `{$tableName}` (`{$this->_parentId}`,{$keys}) VALUES (:{$this->_parentId},{$placeholders}) ";
+        $sql.= "ON DUPLICATE KEY UPDATE {$onDuplicate};";
+        return $sql;
     }
 
-    public function save($testRelations = true) {
-        parent::save($testRelations);
-        $adapter = self::getAdapter();
-        foreach ($this->_getChangedDefs() as $def) {
-            $sql = Helper::createSelectQuery($def['tabName'], "{$def['foreignKey']}={$this->get('id')}", null, 1);
-            $row = $adapter->fetchRow($sql);
-            if (!empty($row)) {
-                // UPDATING
-                $sql = "UPDATE `{$def['tabName']}` SET ";
-                $params = [];
-                foreach($def['fields'] as $field) {
-                    $sql.= "`{$field}`=?,";
-                    $params[] = $this->get($field);
-                }
-                $sql = rtrim($sql, ',') . " WHERE `{$def['foreignKey']}`={$this->get('id')} LIMIT 1";
-                $adapter->query($sql, $params);
-            } else {
-                // INSERTING
-                $values = [$def['foreignKey'] => $this->get('id')];
-                foreach($def['fields'] as $field) {
-                    $values[$field] = $this->get($field);
-                }
-                $adapter->insert($def['tabName'], $values);
-            }
-        }
-        return $this;
+    private function _getTableName($fieldName) {
+        return self::$_externalFields[$fieldName]['table'];
     }
 
-    public function drop() {
-        if (!self::$_extFieldsDefsLoaded) {
-            $this->_loadExtFieldsDefs();
-        }
-        foreach(self::$_extFieldsDefinition as $def) {
-            $this->dropExternalRecord($def['tabName']);
-        }
-        parent::drop();
-        return $this;
+    private function _getFieldKey($fieldName) {
+        return self::$_externalFields[$fieldName]['fieldKey'];
     }
 
-    public function dropExternalRecord($tabName) {
-        if (!self::$_extFieldsDefsLoaded) {
-            $this->_loadExtFieldsDefs();
+    private function _deleteExternalFields($id) {
+        foreach ($this->_getTableNames() as $tableName) {
+            $this->_deleteExternalRow($tableName, $id);
         }
-        $def = self::$_extFieldsDefinition[$tabName];
-        if (!empty($def)) {
-            $sql = "DELETE FROM `{$def['tabName']}` WHERE `{$def['foreignKey']}`=? LIMIT 1";
-            return self::getAdapter()->query($sql, [$this->get('id')]);
-        }
-        return 0;
     }
 
-    private function _loadExtFieldsValues($fieldName) {
-        $def = $this->_getExtFieldDef($fieldName);
-        $sql = Helper::createSelectQuery($def['tabName'], "{$def['foreignKey']}={$this->get('id')}", null, 1);
-        $row = self::getAdapter()->fetchRow($sql);
-        $fields = [];
-        foreach($def['fields'] as $fieldName) {
-            $fields["external.{$fieldName}"] = empty($row) ? '' : $row[$fieldName];
+    private function _getTableNames() {
+        $tableNames = [];
+        foreach (self::$_externalFields as $fieldName => $fieldData) {
+            $tableNames[$this->_getTableName($fieldName)] = '';
         }
-        $this->set($fields);
-        if (!$this->_isExtValuesLoaded($def['tabName'])) {
-            $this->_extFieldsLoaded[] = $def['tabName'];
-        }
-        return $fields;
+        return array_keys($tableNames);
     }
 
-    private function _getExtFieldDef($fieldName) {
-        if (!self::$_extFieldsDefsLoaded) {
-            $this->_loadExtFieldsDefs();
-        }
-        foreach(self::$_extFieldsDefinition as $def) {
-            if (in_array($fieldName, $def['fields'])) {
-                return $def;
-            }
-        }
-        return null;
+    private function _deleteExternalRow($tableName, $rowId) {
+        $sql = "DELETE FROM `{$tableName}` WHERE `{$this->_parentId}`='{$rowId}' LIMIT 1";
+        Record::getAdapter()->query($sql);
     }
-
-    private function _isExtValuesLoaded($tabName) {
-        return in_array($tabName, $this->_extFieldsLoaded);
-    }
-
-    private function _getChangedDefs() {
-        if (!self::$_extFieldsDefsLoaded) {
-            $this->_loadExtFieldsDefs();
-        }
-        $defs = [];
-        foreach($this->_extFieldsChanged as $tabName) {
-            $defs[] = self::$_extFieldsDefinition[$tabName];
-        }
-        return $defs;
-    }
-
-    private function _loadExtFieldsDefs() {
-        if (!isset(self::$externalFields)) {
-            self::$_extFieldsDefsLoaded = true;
-            return ;
-        }
-        foreach(self::$externalFields as $tabName => $foreignKey) {
-            $def = [
-                'tabName'    => $tabName,
-                'foreignKey' => $foreignKey,
-                'fields'     => []
-            ];
-            foreach(self::getAdapter()->getTableColumns($tabName) as $columnDef) {
-                if ( $this->hasOwnField($columnDef['Field']) || ($columnDef['Field'] == $foreignKey)) {
-                    continue ;
-                }
-                $def['fields'][] = $columnDef['Field'];
-            }
-            self::$_extFieldsDefinition[$tabName] = $def;
-        }
-        self::$_extFieldsDefsLoaded = true;
-    }
-
 
 }
 
-?>
+function _createGetter($fieldName) {
+    return function() use ($fieldName) {
+        /** @var Record|TExternalFields $this */
+        if (!isset($this->_externalFieldsCache[$fieldName])) {
+            $tableName = self::$_externalFields[$fieldName]['table'];
+            $fieldKey = self::$_externalFields[$fieldName]['fieldKey'];
+            $sql = "SELECT `{$fieldKey}` FROM `{$tableName}` WHERE `parent_id`=?";
+            $result = Record::getAdapter()->fetchSingleValue($sql, [$this->id]);
+            $this->_externalFieldsCache[$fieldName] = ($result === false) ? null : $result;
+        }
+        return $this->_externalFieldsCache[$fieldName];
+    };
+}
+
+function _createSetter($fieldName) {
+    return function($value) use ($fieldName) {
+        /** @var Record|TExternalFields $this */
+        $this->_externalFieldsCache[$fieldName] = $value;
+        $this->_externalFieldsChanged[$this->_getTableName($fieldName)][$this->_getFieldKey($fieldName)] = $value;
+        return $value;
+    };
+}

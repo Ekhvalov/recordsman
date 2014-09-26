@@ -214,6 +214,9 @@ abstract class Record {
         array_unshift($argsArray, $triggerName);
         array_unshift($argsArray, $this);
         $result = null;
+        if ($triggerName == self::DELETED) {
+            $argsArray[] = $this->id;
+        }
         foreach(self::getLoader()->getClassTriggersCallbacks($context, $triggerName) as $callback) {
             $result = call_user_func_array($callback, $argsArray);
             if ($result === false) {
@@ -231,7 +234,7 @@ abstract class Record {
         if (self::getLoader()->hasClassPropertyGetterCallbacks($context, $fieldName)) {
             $result = $this->getRawFieldValue($fieldName);
             foreach ($this->_getGetterCallbacks($fieldName) as $callback) {
-                $result = call_user_func($callback->bindTo($this), $result);
+                $result = call_user_func($callback->bindTo($this, $this), $result);
             }
             return $result;
         }
@@ -279,10 +282,10 @@ abstract class Record {
         if ($fieldName == 'id') {
             throw new RecordsManException("Can't change `id` field", 70);
         }
-        $callbacks = $this->_getSetterCallbacks($fieldName);
-        if (!empty($callbacks)) {
-            foreach ($callbacks as $callback) {
-                $value = call_user_func($callback->bindTo($this), $value);
+        $context = $this->_getContext();
+        if (self::getLoader()->hasClassPropertySetterCallbacks($context, $fieldName)) {
+            foreach ($this->_getSetterCallbacks($fieldName) as $callback) {
+                $value = call_user_func($callback->bindTo($this, $this), $value);
             }
         }
         if ($this->hasOwnField($fieldName)) {
@@ -294,7 +297,6 @@ abstract class Record {
             }
             return $this;
         }
-        $context = $this->_getContext();
         $foreignClass = Helper::getClassNamespace($context) . ucfirst(Helper::getSingular($fieldNameOrFieldsArray));
         if (class_exists($foreignClass)) {
             $relation = $this->getRelationTypeWith($foreignClass);
@@ -362,10 +364,10 @@ abstract class Record {
      * @return Record
      */
     public function save($testRelations = true) {
-        if (!$this->wasChanged()) {
+        if ($this->callTrigger(self::SAVE, [$this->_changed]) === false) {
             return $this;
         }
-        if ($this->callTrigger(self::SAVE, [$this->_changed]) === false) {
+        if (!$this->wasChanged()) {
             return $this;
         }
         $thisId = $this->get('id');

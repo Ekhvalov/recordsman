@@ -1,93 +1,105 @@
 <?php
 namespace RecordsMan;
-require_once __DIR__ . DIRECTORY_SEPARATOR . 'DBConnected_TestCase.php';
-use Test\Item as Item;
+
+use Test\ItemExt;
 
 class TExternalFieldsTest extends DBConnected_TestCase
 {
 
-    /**
-     * @covers RecordsMan\TExternalFields::get
-     */
-    public function testGet()
+    public function testAddExternalField()
     {
-        $item1 = Item::load(1);
-        $this->assertEquals('Item7 (top level)', $item1->title);
-        $this->assertEquals('Full name of item#1', $item1->full_name);
-        $this->assertEquals('150.55', $item1->price);
-        $this->assertEquals('Коллективное бессознательное', $item1->full_text);
-        $item2 = Item::load(2);
-        $this->assertEquals('', $item2->full_name);
-        $this->setExpectedException('RecordsMan\RecordsManException', '', 40);
-        $item2->unexist_field;
+        $this->assertClassHasStaticAttribute('_externalFields', '\Test\ItemExt');
+        $itemExtReflection = new \ReflectionClass('\Test\ItemExt');
+        $tablesReflection = $itemExtReflection->getProperty('_externalFields');
+        $tablesReflection->setAccessible(true);
+        $this->assertTrue(is_array($tablesReflection->getValue()));
+        $this->assertCount(0, $tablesReflection->getValue());
+        ItemExt::init();
+        $this->assertCount(6, $tablesReflection->getValue());
+        $this->assertTrue(isset($tablesReflection->getValue()['cityName']));
+        $this->assertEquals('item_city', $tablesReflection->getValue()['cityName']['table']);
+        $this->assertEquals('title', $tablesReflection->getValue()['cityName']['fieldKey']);
     }
 
-    /**
-     * @covers RecordsMan\TExternalFields::set
-     */
-    public function testSet()
+    public function testAddExternalField_Get()
     {
-        $item = Item::load(1);
-        $item->full_name = 'New value';
-        $this->assertEquals('New value', $item->full_name);
-        $this->assertEquals('New value', $item->get("external.full_name"));
+        $itemExt = ItemExt::load(1);
+        $this->assertEquals('Saint-Petersburg', $itemExt->cityName);
+        $this->assertEquals('4.5', $itemExt->cityPopulation);
+        $itemExt = ItemExt::load(2);
+        $this->assertEquals('Moscow', $itemExt->cityName);
+        $this->assertEquals('11.5', $itemExt->cityPopulation);
     }
 
-    /**
-     * @covers RecordsMan\TExternalFields::save
-     */
-    public function testSave()
+    public function testAddExternalField_Set()
     {
-        $item = Item::load(1)->set([
-            'title'     => 'Item new title',
-            'full_name' => 'Item new name',
-            'price'     => 1.11,
-            'full_text' => 'New description'
-        ])->save();
-        $this->assertEquals('Item new title', $item->title);
-        $this->assertEquals('Item new name', $item->full_name);
-        $this->assertEquals('1.11', $item->price);
-        $this->assertEquals('New description', $item->full_text);
-        unset($item);
-        $item = Item::load(1);
-        $this->assertEquals('Item new title', $item->title);
-        $this->assertEquals('Item new name', $item->full_name);
-        $this->assertEquals('1.11', $item->price);
-        $this->assertEquals('New description', $item->full_text);
-        $newItem = Item::create()->set([
-            'title'     => 'New item title',
-            'full_name' => 'New item name',
-            'full_text' => 'New item desc'
-        ]);
-        $newItem->price = 201.121;
-        $id = $newItem->save()->id;
-        unset($newItem);
-        $newItem = Item::load($id);
-        $this->assertEquals('New item title', $newItem->title);
-        $this->assertEquals('New item name', $newItem->full_name);
-        $this->assertEquals('201.121', $newItem->price);
-        $this->assertEquals('New item desc', $newItem->full_text);
+        /** @var TExternalFields|ItemExt $itemExt */
+        $itemExt = ItemExt::load(1);
+        $this->assertEquals('Saint-Petersburg', $itemExt->cityName);
+        $this->assertEquals('4.5', $itemExt->cityPopulation);
+        $itemExt->setCityName('Leningrad');
+        $itemExt->setPopulation(4.8);
+        $this->assertEquals('Leningrad', $itemExt->cityName);
+        $this->assertEquals('4.8', $itemExt->cityPopulation);
     }
 
-    /**
-     * @covers RecordsMan\TExternalFields::drop
-     */
-    public function testDrop()
+    public function testAddExternalField_Save()
     {
-        $adapter = Record::getAdapter();
-        $infoSql = "SELECT * FROM `test_items_info` WHERE `item_id`=1";
-        $textSql = "SELECT * FROM `test_items_text` WHERE `item_id`=1";
-        $infoRow = $adapter->fetchRow($infoSql);
-        $textRow = $adapter->fetchRow($textSql);
-        $this->assertNotEmpty($infoRow);
-        $this->assertNotEmpty($textRow);
-        Item::load(1)->drop();
-        $infoRow = $adapter->fetchRow($infoSql);
-        $textRow = $adapter->fetchRow($textSql);
-        $this->assertEmpty($infoRow);
-        $this->assertEmpty($textRow);
+        /** @var TExternalFields|ItemExt $itemExt */
+        $itemExt = ItemExt::load(1);
+        $this->assertEquals('Saint-Petersburg', $itemExt->cityName);
+        $this->assertEquals('4.5', $itemExt->cityPopulation);
+        $itemExt->setCityName('Leningrad');
+        $itemExt->setPopulation(4.8);
+        $itemExt->save();
+        $itemExt = ItemExt::load(1);
+        $this->assertEquals('Leningrad', $itemExt->cityName);
+        $this->assertEquals('4.8', $itemExt->cityPopulation);
+        $this->assertNull($itemExt->sku);
+        $this->assertNull($itemExt->length);
+        $this->assertNull($itemExt->height);
+        $this->assertNull($itemExt->width);
+        $itemExt->setSku(1)->setLength(11.3)->setWidth(155)->setHeight(14)
+            ->setCityName('Saint-Petersburg')
+            ->setPopulation(4.9)
+            ->save();
+        $itemExt = ItemExt::load(1);
+        $this->assertEquals('Saint-Petersburg', $itemExt->cityName);
+        $this->assertEquals(4.9, $itemExt->cityPopulation);
+        $this->assertEquals(1, $itemExt->sku);
+        $this->assertEquals(11.3, $itemExt->length);
+        $this->assertEquals(155, $itemExt->width);
+        $this->assertEquals(14, $itemExt->height);
+        /** @var TExternalFields|ItemExt $itemExt4 */
+        $itemExt4 = ItemExt::load(4);
+        $itemExt4->setSku(4)->setLength(11.3)->setWidth(155)->setHeight(14)->save();
+        $itemExt4 = ItemExt::load(4);
+        $this->assertEquals(4, $itemExt4->sku);
+        $this->assertEquals(11.3, $itemExt4->length);
+        $this->assertEquals(155, $itemExt4->width);
+        $this->assertEquals(14, $itemExt4->height);
     }
+
+    public function testAddExternalField_Drop()
+    {
+        /** @var TExternalFields|ItemExt $itemExt */
+        $itemExt = ItemExt::load(1);
+        $this->assertEquals('Saint-Petersburg', $itemExt->cityName);
+        $this->assertEquals(4.9, $itemExt->cityPopulation);
+        $this->assertEquals(1, $itemExt->sku);
+        $this->assertEquals(11.3, $itemExt->length);
+        $this->assertEquals(155, $itemExt->width);
+        $this->assertEquals(14, $itemExt->height);
+        $itemExt->callTrigger(Record::DELETED);
+        $itemExt = ItemExt::load(1);
+        $this->assertNull($itemExt->cityName);
+        $this->assertNull($itemExt->cityPopulation);
+        $this->assertNull($itemExt->sku);
+        $this->assertNull($itemExt->length);
+        $this->assertNull($itemExt->height);
+        $this->assertNull($itemExt->width);
+    }
+
 
 }
 
-?>
