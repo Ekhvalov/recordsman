@@ -125,7 +125,6 @@ class ItemExt extends Record
     protected static $tableName = 'test_items';
 
     public static function init() {
-        ItemExt::externalFieldsInit();
         ItemExt::addExternalField('cityName', 'item_city', 'title');
         ItemExt::addExternalField('cityPopulation', 'item_city', 'population');
         ItemExt::addExternalField('sku', 'item_properties');

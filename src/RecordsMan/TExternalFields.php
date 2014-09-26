@@ -7,21 +7,25 @@ trait TExternalFields
     private $_externalFieldsCache = [];
     private $_externalFieldsChanged = [];
     private $_parentId = 'parent_id';
-
-    public static function externalFieldsInit() {
-        self::addTrigger(self::SAVE, function(self $record) {
-            $record->_saveExternalFields();
-        });
-
-        self::addTrigger(self::DELETED, function(self $record, $triggerName, $id) {
-            $record->_deleteExternalFields($id);
-        });
-    }
+    private static $_initialized = false;
 
     public static function addExternalField($fieldName, $tableName, $fieldKey = null) {
+        if (!self::$_initialized) {
+            self::_externalFieldsInit();
+            self::$_initialized = true;
+        }
         self::$_externalFields[$fieldName]['table'] = $tableName;
         self::$_externalFields[$fieldName]['fieldKey'] = $fieldKey ?: $fieldName;
         self::addProperty($fieldName, _createGetter($fieldName), _createSetter($fieldName));
+    }
+
+    private static function _externalFieldsInit() {
+        self::addTrigger(self::SAVE, function(self $record) {
+            $record->_saveExternalFields();
+        });
+        self::addTrigger(self::DELETED, function(self $record, $triggerName, $id) {
+            $record->_deleteExternalFields($id);
+        });
     }
 
     private function _saveExternalFields() {
