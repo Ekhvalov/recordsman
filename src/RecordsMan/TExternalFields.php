@@ -95,7 +95,6 @@ trait TExternalFields
             Record::getAdapter()->query($sql);
         }
     }
-
 }
 
 function _createGetter($fieldName) {

@@ -1,7 +1,8 @@
 <?php
 namespace RecordsMan;
 
-class RecordSet implements \Iterator, \Countable, \ArrayAccess {
+class RecordSet implements \Iterator, \Countable, \ArrayAccess
+{
 
     const LOAD_BY_SQL = 1;
     const LOAD_FROM_RELATION = 2;
@@ -24,9 +25,7 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
     ];
     private $_records = [];
     private $_gen = null;
-    /**
-     * @var \Generator
-     */
+    /** @var \Generator $_currentGen */
     private $_currentGen = null;
 
 
@@ -113,7 +112,7 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
 
     public function add($entries) {
         if ($entries instanceof self) {
-            foreach($entries as $entry) {
+            foreach ($entries as $entry) {
                 $this->add($entry);
             }
             return $this;
@@ -185,7 +184,7 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
     }
 
     public function map(\Closure $callback) {
-        foreach($this as $index => $record) {
+        foreach ($this as $index => $record) {
             if (call_user_func_array($callback->bindTo($record), [$index, $record]) === false) {
                 break;
             }
@@ -211,7 +210,7 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
 
     public function toArray($neededFields = []) {
         $res = [];
-        foreach($this as $item) {
+        foreach ($this as $item) {
             $res[] = $item->toArray($neededFields);
         }
         return $res;
@@ -240,7 +239,8 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
      */
     public function prepend(Record $item) {
         if ($item->getQualifiedClassname() != $this->getClassName()) {
-            throw new RecordsManException("Can't prepend set of {$this->getClassName()} with item of class {$item->getQualifiedClassname()}");
+            $msg = "Can't prepend set of {$this->getClassName()} with item of class {$item->getQualifiedClassname()}";
+            throw new RecordsManException($msg);
         }
         array_unshift($this->_records, $item);
         $this->_loadingParams['count'] = count($this->_records);
@@ -264,7 +264,8 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
      */
     public function append(Record $item) {
         if ($item->getQualifiedClassname() != $this->getClassName()) {
-            throw new RecordsManException("Can't append item of class {$item->getQualifiedClassname()} to set of {$this->getClassName()}");
+            $msg = "Can't append item of class {$item->getQualifiedClassname()} to set of {$this->getClassName()}";
+            throw new RecordsManException($msg);
         }
         $this->_records[] = $item;
         $this->_loadingParams['count'] = count($this->_records);
@@ -402,7 +403,7 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
 
             case self::LOAD_FROM_CACHE:
                 $cacher = Record::getCacheProvider();
-                foreach($loadBy['ids'] as $id) {
+                foreach ($loadBy['ids'] as $id) {
                     //TODO: Warning! every record may not exists in the cache!
                     $rows[] = $cacher->getRecord($targetClass, $id);
                 }
@@ -418,7 +419,7 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
 
         $this->_records = [];
         if (!empty($rows)) {
-            foreach($rows as $row) {
+            foreach ($rows as $row) {
                 $this->_records[] = $targetClass::_fromArray($row);
             }
         }
@@ -459,7 +460,15 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
                     return intval(Record::getAdapter()->fetchSingleValue($sql));
                 };
             }
-            return function($from = null, $count = null) use ($targetTab, $throughTab, $targetThroughForeignKey, $queryParams) {
+            return function (
+                $from = null,
+                $count = null
+            ) use (
+                $targetTab,
+                $throughTab,
+                $targetThroughForeignKey,
+                $queryParams
+            ) {
                 return Record::getAdapter()->fetchRows(Helper::createSelectJoinQuery(
                     $targetTab,
                     $throughTab,
@@ -593,7 +602,7 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
         return function() use ($targetClass, $recordsLoader, $portion, $limit) {
             $from = $limit ? $limit[0] : 0;
             $to = $limit ? ($limit[0] + $limit[1]) : false;
-            while(true) {
+            while (true) {
                 $cnt = $portion;
                 if ($to && (($from + $portion) > $to)) {
                     $cnt = ($limit[0] + $limit[1]) - $from;
@@ -605,7 +614,7 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
                 if (empty($records)) {
                     break;
                 }
-                foreach($records as $r) {
+                foreach ($records as $r) {
                     yield $targetClass::_fromArray($r);
                 }
                 if (count($records) < $portion) {
@@ -619,7 +628,7 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
     private function _filterByCallback(\Closure $callback, $first = false) {
         $newSet = $this->_newSelf();
         $newSet->_loadingParams['loaded'] = true;
-        foreach($this as $record) {
+        foreach ($this as $record) {
             if (call_user_func($callback->bindTo($record))) {
                 if ($first) {
                     return $record;
@@ -633,7 +642,7 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
     private function _filterByCondition($condition, $first = false) {
         $newSet = $this->_newSelf();
         $newSet->_loadingParams['loaded'] = true;
-        foreach($this as $record) {
+        foreach ($this as $record) {
             if ($record->isMatch($condition)) {
                 if ($first) {
                     return $record;
@@ -647,5 +656,4 @@ class RecordSet implements \Iterator, \Countable, \ArrayAccess {
     private function _newSelf() {
         return new self($this->_loadingParams['class'], 'filter', $this->_loadingParams['initiator']);
     }
-
 }

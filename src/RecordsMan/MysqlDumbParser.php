@@ -1,9 +1,8 @@
 <?php
 namespace RecordsMan;
 
-
-class MysqlDumbParser implements IDumpParser {
-
+class MysqlDumbParser implements IDumpParser
+{
     protected $_source     = null;
     protected $_sourceType = null;
     protected $_currLine   = 0;
@@ -57,24 +56,24 @@ class MysqlDumbParser implements IDumpParser {
         $curMatch = [];
         $len = strlen($str);
 
-        for($i=0; $i < $len; $i++) {
+        for ($i=0; $i < $len; $i++) {
             switch ($str{$i}) {
                 case '"':
                     if ($state == 'skip') {
                         $state = 'in_dblquot';
-                    } elseif($state == 'in_dblquot') {
+                    } elseif ($state == 'in_dblquot') {
                         $state = 'skip';
                     }
                     break;
                 case "'":
                     if ($state == 'skip') {
                         $state = 'in_quot';
-                    } elseif($state == 'in_quot') {
+                    } elseif ($state == 'in_quot') {
                         $state = 'skip';
                     }
                     break;
                 case '*':
-                    if ( ($i > 0) && ($str{$i-1} == '/') ) {
+                    if (($i > 0) && ($str{$i-1} == '/')) {
                         if ($state == 'skip') {
                             $state = 'in_comment';
                             $curMatch['start'] = $i-1;
@@ -82,7 +81,7 @@ class MysqlDumbParser implements IDumpParser {
                     }
                     break;
                 case '/':
-                    if ( ($i > 0) && ($str{$i-1} == '*') ) {
+                    if (($i > 0) && ($str{$i-1} == '*')) {
                         if ($state == 'in_comment') {
                             $state = 'skip';
                             $curMatch['end'] = $i;
@@ -94,7 +93,7 @@ class MysqlDumbParser implements IDumpParser {
             }
         }
         $deleted = 0;
-        foreach($matches as $match) {
+        foreach ($matches as $match) {
             if (isset($match['start']) && isset($match['end'])) {
                 $length = $match['end'] - $match['start'] + 1;
                 $str = substr_replace($str, '', ($match['start'] - $deleted), $length);
@@ -189,8 +188,4 @@ class MysqlDumbParser implements IDumpParser {
         $this->_currLine   = 0;
         return $this;
     }
-
-
 }
-
-?>

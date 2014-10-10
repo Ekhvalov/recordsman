@@ -1,6 +1,7 @@
 <?php
 namespace RecordsMan;
 
-class RecordsManException extends \Exception {
+class RecordsManException extends \Exception
+{
 
 }

@@ -1,8 +1,8 @@
 <?php
 namespace RecordsMan;
 
-class BoolCondition extends Condition {
-
+class BoolCondition extends Condition
+{
     private $_operands = [];
     private $_operator = 'AND';
 
@@ -21,7 +21,7 @@ class BoolCondition extends Condition {
     public function compile() {
         $compiled = '(';
         $first = true;
-        foreach($this->_operands as $op) {
+        foreach ($this->_operands as $op) {
             $cond = $this->_argToCondition($op);
             $compiled .= (!$first ? (' ' . $this->_operator . ' ') : '') . $cond->toSql();
             $first = false;
@@ -35,7 +35,7 @@ class BoolCondition extends Condition {
     }
 
     private function _testAnd($item) {
-        foreach($this->_operands as $op) {
+        foreach ($this->_operands as $op) {
             $cond = $this->_argToCondition($op);
             if (!$cond->test($item)) {
                 return false;
@@ -45,7 +45,7 @@ class BoolCondition extends Condition {
     }
 
     private function _testOr($item) {
-        foreach($this->_operands as $op) {
+        foreach ($this->_operands as $op) {
             $cond = $this->_argToCondition($op);
             if ($cond->test($item)) {
                 return true;
@@ -53,5 +53,4 @@ class BoolCondition extends Condition {
         }
         return false;
     }
-
 }

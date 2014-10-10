@@ -4,8 +4,8 @@ namespace RecordsMan;
 /**
  * @property int $id
  */
-abstract class Record {
-
+abstract class Record
+{
     const RELATION_NONE    = false;
     const RELATION_BELONGS = 1;
     const RELATION_MANY    = 2;
@@ -27,6 +27,10 @@ abstract class Record {
     private $_foreign = [];
     private $_changed = [];
     private $_context;
+
+    protected static $hasMany;
+    protected static $belongsTo;
+    protected static $tableName;
 
 
     ////////// Records loading static methods
@@ -66,8 +70,10 @@ abstract class Record {
      *
      * If called without parameters, returns all record in RecordSet
      *
-     * @param array|string|Condition $condition Instance of Condition or something that can be reduced to Condition (see Condition class description)
-     * @param array|string $order String, containing field name to ascending ordering, or array like ['title' => 'ASC', 'price' => 'DESC']
+     * @param array|string|Condition $condition Instance of Condition or something that can be reduced to Condition
+     * (see Condition class description)
+     * @param array|string $order String, containing field name to ascending ordering,
+     * or array like ['title' => 'ASC', 'price' => 'DESC']
      * @param array|int $limit Integer value for limiting, or array like [10, 20]
      * @return RecordSet
      */
@@ -79,7 +85,8 @@ abstract class Record {
     /**
      * Finds & returns all records in table. Shortcut for find(null, $order)
      *
-     * @param array|string $order String, containing field name to ascending ordering, or array like ['title' => 'ASC', 'price' => 'DESC']
+     * @param array|string $order String, containing field name to ascending ordering,
+     * or array like ['title' => 'ASC', 'price' => 'DESC']
      * @return RecordSet
      */
     public static function all($order = null) {
@@ -192,7 +199,7 @@ abstract class Record {
         $calledClass = get_called_class();
         if (is_int($triggerType) && !in_array($triggerType, $defTriggers)) {
             // Interpret as a combination of default triggers
-            foreach($defTriggers as $defTrigger) {
+            foreach ($defTriggers as $defTrigger) {
                 ($triggerType & $defTrigger) && $loader->addClassTrigger($calledClass, $defTrigger, $callback);
             }
             return;
@@ -217,7 +224,7 @@ abstract class Record {
         if ($triggerName == self::DELETED) {
             $argsArray[] = $this->id;
         }
-        foreach(self::getLoader()->getClassTriggersCallbacks($context, $triggerName) as $callback) {
+        foreach (self::getLoader()->getClassTriggersCallbacks($context, $triggerName) as $callback) {
             $result = call_user_func_array($callback, $argsArray);
             if ($result === false) {
                 break;
@@ -263,8 +270,6 @@ abstract class Record {
         return self::getLoader()->getClassPropertySetterCallbacks($this->_getContext(), $fieldName);
     }
 
-
-
     /**
      * @param string $fieldNameOrFieldsArray
      * @param null|mixed $value
@@ -273,7 +278,7 @@ abstract class Record {
      */
     protected function set($fieldNameOrFieldsArray, $value = null) {
         if (is_array($fieldNameOrFieldsArray)) {
-            foreach($fieldNameOrFieldsArray as $fieldName => $fieldValue) {
+            foreach ($fieldNameOrFieldsArray as $fieldName => $fieldValue) {
                 $this->set($fieldName, $fieldValue);
             }
             return $this;
@@ -318,14 +323,14 @@ abstract class Record {
         $classFields = self::getLoader()->getFieldsDefinition($context);
         $actualFields = $this->_fields;
         // filtering only own fields
-        foreach($classFields as $fieldName => $_) {
+        foreach ($classFields as $fieldName => $_) {
             $actualFields[$fieldName] = $this->get($fieldName);
         }
         if (empty($neededFields)) {
             return $actualFields;
         }
         $res = [];
-        foreach($neededFields as $fieldName) {
+        foreach ($neededFields as $fieldName) {
             $res[$fieldName] = (array_key_exists($fieldName, $actualFields)) ? $actualFields[$fieldName] : null;
         }
         return $res;
@@ -375,9 +380,9 @@ abstract class Record {
         $tableName = self::getLoader()->getClassTableName($context);
         $actualFields = [];
         // filtering only own fields
-        foreach($this->_changed as $fieldName) {
+        foreach ($this->_changed as $fieldName) {
             $value = $this->get($fieldName);
-            if ( ($fieldName != 'id') && $this->hasOwnField($fieldName) ) {
+            if (($fieldName != 'id') && $this->hasOwnField($fieldName)) {
                 $actualFields[$fieldName] = $value;
             }
         }
@@ -394,7 +399,7 @@ abstract class Record {
             }
             $sqlParams = [];
             $sql = "UPDATE `{$tableName}` SET ";
-            foreach($actualFields as $fieldName => $value) {
+            foreach ($actualFields as $fieldName => $value) {
                 $sql.= "`{$fieldName}`=?,";
                 $sqlParams[] = $value;
             }
@@ -469,6 +474,7 @@ abstract class Record {
         }
         $relationType = $this->getRelationTypeWith($foreignClass);
         $relationParams = $this->getRelationParamsWith($foreignClass);
+        /** @var Record|string $foreignClass */
         switch ($relationType) {
             case self::RELATION_BELONGS:
                 $fKeyValue = $this->get($relationParams['foreignKey']);
@@ -503,7 +509,7 @@ abstract class Record {
                 break;
             case self::RELATION_MANY:
                 /** @var Record $record */
-                foreach($records as $record) {
+                foreach ($records as $record) {
                     $record->setForeign($context, $this);
                 }
                 break;
@@ -522,7 +528,8 @@ abstract class Record {
 
     public function __set($fieldName, $value) {
         $context = $this->_getContext();
-        throw new RecordsManException("Field {$context}::{$fieldName} was not declared as public (use TPublicFields to declare public fields)", 41);
+        $msg = "Field {$context}::{$fieldName} was not declared as public (use TPublicFields to declare public fields)";
+        throw new RecordsManException($msg, 41);
     }
 
 
@@ -564,12 +571,12 @@ abstract class Record {
         $hasMany = [];
         $belongsTo = [];
         if (isset(static::$hasMany) && is_array(static::$hasMany)) {
-            foreach(static::$hasMany as $class => $relationParams) {
+            foreach (static::$hasMany as $class => $relationParams) {
                 $hasMany[$class] = is_array($relationParams) ? $relationParams : ['foreignKey' => $relationParams];
             }
         }
         if (isset(static::$belongsTo) && is_array(static::$belongsTo)) {
-            foreach(static::$belongsTo as $class => $relationParams) {
+            foreach (static::$belongsTo as $class => $relationParams) {
                 $belongsTo[$class] = is_array($relationParams) ? $relationParams : ['foreignKey' => $relationParams];
             }
         }
@@ -623,12 +630,13 @@ abstract class Record {
         $loader = self::getLoader();
         $relatedClasses = $loader->getClassRelations($context, Record::RELATION_MANY);
         if (!empty($relatedClasses)) {
-            foreach($relatedClasses as $relClass) {
+            foreach ($relatedClasses as $relClass) {
                 $relationParams = $loader->getClassRelationParamsWith($context, $relClass);
                 if (isset($relationParams['through'])) {
                     continue;
                 }
-                foreach($this->loadForeign($relClass) as $foreign) {
+                /** @var Record $foreign */
+                foreach ($this->loadForeign($relClass) as $foreign) {
                     $foreign->drop();
                 }
             }
@@ -640,7 +648,8 @@ abstract class Record {
         $loader = self::getLoader();
         $classesWithCounters = $loader->getClassCounters($context);
         $thisTab = $loader->getClassTableName($context);
-        foreach($classesWithCounters as $className => $counterField) {
+        /** @var Record $className */
+        foreach ($classesWithCounters as $className => $counterField) {
             $relationParams = $loader->getClassRelationParamsWith($context, $className);
             $foreignKey = $relationParams['foreignKey'];
             $foreignItemId = $this->get($foreignKey);
@@ -649,6 +658,7 @@ abstract class Record {
                 if (!$foreignItemId) {
                     continue ;
                 }
+                /** @var Record $parentItem */
                 $parentItem = $className::load($foreignItemId);
                 $sql = "SELECT COUNT(*) FROM `{$thisTab}` WHERE `{$foreignKey}`={$foreignItemId}";
                 $count = self::getAdapter()->fetchSingleValue($sql);
@@ -669,7 +679,8 @@ abstract class Record {
         $context = $this->_getContext();
         $loader = $this->getLoader();
         $relatedClasses = $loader->getClassRelations($context, Record::RELATION_BELONGS);
-        foreach($relatedClasses as $className) {
+        /** @var Record $className */
+        foreach ($relatedClasses as $className) {
             if ($context == $className) {
                 // Skipping self-related classes
                 continue ;
@@ -678,11 +689,10 @@ abstract class Record {
             $foreignItemId = $this->get($relationParams['foreignKey']);
             try {
                 $className::load($foreignItemId);
-            } catch(\Exception $e) {
-                throw new RecordsManException("Related item of class {$className} (#{$foreignItemId}) are not exists", 85);
+            } catch (\Exception $e) {
+                $msg = "Related item of class {$className} (#{$foreignItemId}) are not exists";
+                throw new RecordsManException($msg, 85);
             }
         }
     }
-
-
 }

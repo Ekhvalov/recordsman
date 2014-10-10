@@ -1,11 +1,12 @@
 <?php
 namespace RecordsMan;
 
-trait TPublicFields {
-
+trait TPublicFields
+{
     public function __set($field, $value) {
         if (!property_exists(__CLASS__, 'publicFields')) {
-            throw new \RuntimeException('Using of trait TPublicFields consider that static property $publicFields is declared');
+            $msg = 'Using of trait TPublicFields consider that static property $publicFields is declared';
+            throw new \RuntimeException($msg);
         }
         if (!in_array($field, static::$publicFields)) {
             $class = get_class($this);
@@ -14,5 +15,3 @@ trait TPublicFields {
         $this->set($field, $value);
     }
 }
-
-?>

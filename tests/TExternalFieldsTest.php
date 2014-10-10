@@ -5,7 +5,6 @@ use Test\ItemExt;
 
 class TExternalFieldsTest extends DBConnected_TestCase
 {
-
     public function testAddExternalField() {
         $this->assertClassHasStaticAttribute('_fieldTable', '\Test\ItemExt');
         $this->assertClassHasStaticAttribute('_tableForeignKey', '\Test\ItemExt');

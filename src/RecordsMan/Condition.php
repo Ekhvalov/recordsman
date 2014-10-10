@@ -1,8 +1,8 @@
 <?php
 namespace RecordsMan;
 
-class Condition {
-
+class Condition
+{
     const OPERATOR_OR  = 'OR';
     const OPERATOR_AND = 'AND';
 

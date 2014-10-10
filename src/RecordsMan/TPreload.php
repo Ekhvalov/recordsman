@@ -1,8 +1,8 @@
 <?php
 namespace RecordsMan;
 
-trait TPreload {
-
+trait TPreload
+{
     protected static $_preloaded = null;
 
     public static function _select($condition = null, $order = null, $limit = null) {
@@ -15,7 +15,7 @@ trait TPreload {
         }
         $condition = Condition::create($condition);
         $resultSet = [];
-        foreach(self::$_preloaded as $entry) {
+        foreach (self::$_preloaded as $entry) {
             if ($condition->test($entry)) {
                 $resultSet[] = $entry;
             }
@@ -26,5 +26,4 @@ trait TPreload {
     public static function flushCache() {
         self::$_preloaded = null;
     }
-
 }

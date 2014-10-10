@@ -14,8 +14,10 @@ use \RecordsMan\TExternalFields;
  * @property string $title
  * @property RecordSet $itemsRelations
  * @property RecordSet $relatedItems
+ * @property int $setter_test
  */
-class Item extends Record {
+class Item extends Record
+{
 
     protected static $hasMany = [
         '\Test\Item' => [
@@ -57,7 +59,6 @@ class Item extends Record {
     public function setterTest($value) {
         return $this->set('setter_test', $value);
     }
-
 }
 
 /**
@@ -66,7 +67,8 @@ class Item extends Record {
  * @property int $id
  * @property Item $item
  */
-class SubItem extends Record {
+class SubItem extends Record
+{
 
     protected static $tableName  = 'test_subitems';
     protected static $belongsTo  = ['\Test\Item' => 'item_id'];
@@ -85,7 +87,6 @@ class SubItem extends Record {
     public function setTitle($title) {
         return $this->set('title', $title);
     }
-
 }
 
 /**
@@ -93,30 +94,30 @@ class SubItem extends Record {
  * @package Test
  * @property int $id
  */
-class SubSubItem extends Record {
+class SubSubItem extends Record
+{
 
     protected static $tableName  = 'test_subsubitems';
     protected static $belongsTo = [
         '\Test\SubItem' => 'subitem_id'
     ];
-
 }
 
-class RelatedItem extends Record {
+class RelatedItem extends Record
+{
 
     protected static $hasMany = [
         '\Test\ItemsRelation' => 'related_item_id'
     ];
-
 }
 
-class ItemsRelation extends Record {
+class ItemsRelation extends Record
+{
 
     protected static $belongsTo = [
         '\Test\Item' => 'item_id',
         '\Test\RelatedItem' => 'related_item_id'
     ];
-
 }
 
 /**

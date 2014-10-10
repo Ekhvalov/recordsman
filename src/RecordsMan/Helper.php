@@ -1,7 +1,8 @@
 <?php
 namespace RecordsMan;
 
-class Helper {
+class Helper
+{
 
     /**
      * Преобразует имя класса $className в fully-qualified формат, если используются namespaces
@@ -121,7 +122,7 @@ class Helper {
         $ret = '';
         if (is_array($orderParam)) {
             //TODO: correct values testing?
-            foreach($orderParam as $k => $v) {
+            foreach ($orderParam as $k => $v) {
                 $direction = strtoupper($v);
                 $ret.= "`{$k}` {$direction}, ";
             }
@@ -135,7 +136,8 @@ class Helper {
     /**
      * Преобразует параметр $limitParam в строку для SQL-запроса
      *
-     * @param mixed $limitParam Либо массив, в котором первое значение - начальная граница выборки, второе - кол-во записей, либо просто кол-во выбираемых записей
+     * @param mixed $limitParam Либо массив, в котором первое значение - начальная граница выборки,
+     * второе - кол-во записей, либо просто кол-во выбираемых записей
      * @return string
      */
     public static function limitToSql($limitParam) {
@@ -176,16 +178,14 @@ class Helper {
             return $str;
         }
         $len = strlen($word);
-        if ( FALSE !== ($key = array_search(strtolower($word), self::$_pluralizeExceptions)) ) {
+        if (false !== ($key = array_search(strtolower($word), self::$_pluralizeExceptions))) {
             $word = $key;
         } elseif ( (substr($word, - 2, 2) == 'es') && ( in_array(substr($word, - 3, 1), self::$_oneLetEndings) || (in_array(substr($word, - 4, 2), self::$_twoLetEndings)) ) ) {
             $word = substr($word, 0, $len - 2);
-        }
-        elseif (substr($word,  - 3, 3) == 'ies') {
+        } elseif (substr($word, - 3, 3) == 'ies') {
             $word = substr($word, 0, $len - 3).'y';
-        }
-        elseif ($word{$len - 1} == 's') {
-            $word = substr($word, 0,$len - 1);
+        } elseif ($word{$len - 1} == 's') {
+            $word = substr($word, 0, $len - 1);
         }
         return $matches[1] . ($complex ? $prefix : '') . ($ucFirst ? ucfirst($word) : $word);
     }
@@ -211,11 +211,9 @@ class Helper {
         $key = strtolower($word);
         if (isset(self::$_pluralizeExceptions[$key])) {
             $word = self::$_pluralizeExceptions[$key];
-        }
-        elseif (in_array(substr($word, - 1, 1), self::$_oneLetEndings) || in_array(substr($word, - 2, 2), self::$_twoLetEndings)) {
+        } elseif (in_array(substr($word, - 1, 1), self::$_oneLetEndings) || in_array(substr($word, - 2, 2), self::$_twoLetEndings)) {
             $word = $word . 'es';
-        }
-        elseif ($word{$len - 1} == 'y') {
+        } elseif ($word{$len - 1} == 'y') {
             $word = substr($word, 0, $len - 1) . 'ies';
         } else {
             $word = $word . 's';
@@ -280,7 +278,4 @@ class Helper {
         'child' => 'children',
         'ox'    => 'oxen'
     ];
-
 }
-
-?>

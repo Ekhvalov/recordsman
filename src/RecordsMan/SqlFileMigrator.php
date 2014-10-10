@@ -1,8 +1,8 @@
 <?php
 namespace RecordsMan;
 
-class SqlFileMigrator {
-
+class SqlFileMigrator
+{
     protected $_dir     = '';
     protected $_tab     = 'migration';
     protected $_adapter = null;
@@ -91,7 +91,7 @@ class SqlFileMigrator {
     /**
      * Starts migration process
      *
-     * @param int $version Migrate to version. For last version, pass false.
+     * @param bool|int $version Migrate to version. For last version, pass false.
      * @param \Closure $logCallback Log function, that recieves two params: (string $query, array $info)
      * @return array Returns process info as array with keys: 'version','error','queries','success'
      */
@@ -159,8 +159,4 @@ class SqlFileMigrator {
         }
         return $this->_info;
     }
-
-
 }
-
-?>

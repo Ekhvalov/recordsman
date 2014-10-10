@@ -1,9 +1,8 @@
 <?php
 namespace RecordsMan;
 
-
-interface IRecordsCacher {
-
+interface IRecordsCacher
+{
     public function getRecord($class, $id);
 
     public function getRecordSet($class, $key);
@@ -11,5 +10,4 @@ interface IRecordsCacher {
     public function storeRecord(Record $item, $lifetime = null);
 
     public function storeRecordSet(RecordSet $set, $key, $lifetime = null);
-
 }
