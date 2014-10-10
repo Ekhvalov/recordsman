@@ -12,7 +12,7 @@ trait TExternalFields
     private $_externalFieldsChanged = [];
 
     /**
-     * @param string $fieldName Human readable field name
+     * @param string $fieldName Column name
      * @param string $tableName Table name
      * @param null|string $foreignKey if null then {class_name}_id
      */
@@ -28,6 +28,12 @@ trait TExternalFields
 
     private static function _externalFieldsInit() {
         self::addTrigger(self::SAVE, function(self $record) {
+            /** @var Record|TExternalFields $record */
+            if ($record->id) {
+                $record->_saveExternalFields();
+            }
+        });
+        self::addTrigger(self::SAVED, function(self $record) {
             $record->_saveExternalFields();
         });
         self::addTrigger(self::DELETED, function(self $record, $triggerName, $id) {

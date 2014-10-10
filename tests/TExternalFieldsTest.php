@@ -6,8 +6,7 @@ use Test\ItemExt;
 class TExternalFieldsTest extends DBConnected_TestCase
 {
 
-    public function testAddExternalField()
-    {
+    public function testAddExternalField() {
         $this->assertClassHasStaticAttribute('_fieldTable', '\Test\ItemExt');
         $this->assertClassHasStaticAttribute('_tableForeignKey', '\Test\ItemExt');
         $itemExtReflection = new \ReflectionClass('\Test\ItemExt');
@@ -32,8 +31,7 @@ class TExternalFieldsTest extends DBConnected_TestCase
         $this->assertTrue(isset($tablesReflection->getValue()['item_properties']));
     }
 
-    public function testAddExternalField_Get()
-    {
+    public function testAddExternalField_Get() {
         $itemExt = ItemExt::load(1);
         $this->assertEquals('Saint-Petersburg', $itemExt->city_name);
         $this->assertEquals('4.5', $itemExt->city_population);
@@ -42,8 +40,7 @@ class TExternalFieldsTest extends DBConnected_TestCase
         $this->assertEquals('11.5', $itemExt->city_population);
     }
 
-    public function testAddExternalField_Set()
-    {
+    public function testAddExternalField_Set() {
         /** @var TExternalFields|ItemExt $itemExt */
         $itemExt = ItemExt::load(1);
         $this->assertEquals('Saint-Petersburg', $itemExt->city_name);
@@ -54,8 +51,24 @@ class TExternalFieldsTest extends DBConnected_TestCase
         $this->assertEquals('4.8', $itemExt->city_population);
     }
 
-    public function testAddExternalField_Save()
-    {
+    public function testAddExternalField_Save() {
+        /** @var TExternalFields|ItemExt $itemNew */
+        $itemNew = ItemExt::create(['title' => 'Item8']);
+        $itemNew->setCityName('Novgorod');
+        $itemNew->setPopulation(2);
+        $itemNew->setSku(3)
+            ->setHeight(15.5)
+            ->setLength(100.1)
+            ->setWidth(700.2)
+            ->save();
+        $itemNew = ItemExt::findFirst('title=Item8');
+        $this->assertNotNull($itemNew);
+        $this->assertEquals('Novgorod', $itemNew->city_name);
+        $this->assertEquals(2, $itemNew->city_population);
+        $this->assertEquals(3, $itemNew->sku);
+        $this->assertEquals(15.5, $itemNew->height);
+        $this->assertEquals(100.1, $itemNew->length);
+        $this->assertEquals(700.2, $itemNew->width);
         /** @var TExternalFields|ItemExt $itemExt */
         $itemExt = ItemExt::load(1);
         $this->assertEquals('Saint-Petersburg', $itemExt->city_name);
@@ -91,8 +104,7 @@ class TExternalFieldsTest extends DBConnected_TestCase
         $this->assertEquals(14, $itemExt4->height);
     }
 
-    public function testAddExternalField_Drop()
-    {
+    public function testAddExternalField_Drop() {
         /** @var TExternalFields|ItemExt $itemExt */
         $itemExt = ItemExt::load(1);
         $this->assertEquals('Saint-Petersburg', $itemExt->city_name);
@@ -110,7 +122,4 @@ class TExternalFieldsTest extends DBConnected_TestCase
         $this->assertNull($itemExt->height);
         $this->assertNull($itemExt->width);
     }
-
-
 }
-

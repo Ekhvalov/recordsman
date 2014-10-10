@@ -119,6 +119,17 @@ class ItemsRelation extends Record {
 
 }
 
+/**
+ * Class ItemExt
+ * @package Test
+ * @property string $title
+ * @property string $city_name
+ * @property string $city_population
+ * @property int $sku
+ * @property float $length
+ * @property float $width
+ * @property float $height
+ */
 class ItemExt extends Record
 {
     use TExternalFields;
