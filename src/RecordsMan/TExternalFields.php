@@ -60,6 +60,9 @@ trait TExternalFields
             foreach ($fieldsValues as $placeholder => $value) {
                 $params[":{$placeholder}"] = $value;
             }
+            foreach ($fieldsValues as $placeholder => $value) {
+                $params[":_{$placeholder}"] = $value;
+            }
             Record::getAdapter()->query($sql, $params);
             unset($this->_externalFieldsChanged[$tableName]);
         }
@@ -73,7 +76,7 @@ trait TExternalFields
             return ":{$placeholder}";
         }, $colNames));
         $onDuplicate = implode(',', array_map(function($colName) {
-            return "`{$colName}`=:{$colName}";
+            return "`{$colName}`=:_{$colName}";
         }, $colNames));
         $foreignKey = $this->_getTableForeignKey($tableName);
         $sql = "INSERT INTO `{$tableName}` (`{$foreignKey}`,{$keys}) VALUES (:{$foreignKey},{$placeholders}) ";
