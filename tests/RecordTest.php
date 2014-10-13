@@ -10,12 +10,10 @@ use \Test\SubSubItem;
  */
 class RecordTest extends DBConnected_TestCase
 {
-
     /**
      * @covers RecordsMan\Record::load
      */
-    public function testLoad()
-    {
+    public function testLoad() {
         /** @var Item $item */
         $item = Item::load(1);
         $this->assertEquals($item->title, 'Item7 (top level)');
@@ -26,8 +24,7 @@ class RecordTest extends DBConnected_TestCase
     /**
      * @covers RecordsMan\Record::create
      */
-    public function testCreate()
-    {
+    public function testCreate() {
         /** @var Item $item */
         $item = Item::create(['title' => 'New item']);
         $this->assertEquals($item->title, 'New item');
@@ -36,14 +33,13 @@ class RecordTest extends DBConnected_TestCase
     /**
      * @covers RecordsMan\Record::find
      */
-    public function testFind()
-    {
+    public function testFind() {
         $condition = Condition::create('title ~ item%');
         $itemsSet = Item::find($condition, 'title', [0, 5]);
         $this->assertInstanceOf('\RecordsMan\RecordSet', $itemsSet);
         $this->assertEquals(5, $itemsSet->count());
         /** @var Item $item */
-        foreach($itemsSet as $item) {
+        foreach ($itemsSet as $item) {
             $this->assertTrue($item->isMatch($condition));
         }
     }
@@ -51,16 +47,14 @@ class RecordTest extends DBConnected_TestCase
     /**
      * @covers RecordsMan\Record::all
      */
-    public function testAll()
-    {
+    public function testAll() {
         $this->assertEquals(7, Item::all()->count());
     }
 
     /**
      * @covers RecordsMan\Record::findFirst
      */
-    public function testFindFirst()
-    {
+    public function testFindFirst() {
         /** @var Item $existingItem */
         $existingItem = Item::findFirst('id!0', ['id' => 'DESC']);
         $unexistingItem = Item::findFirst('id>70');
@@ -72,8 +66,7 @@ class RecordTest extends DBConnected_TestCase
     /**
      * @covers RecordsMan\Record::_select
      */
-    public function test_select()
-    {
+    public function test_select() {
         $condition = Condition::create(['id>0', 'title ~ item%'], 'id');
         $rows = Item::_select($condition);
         $this->assertInternalType('array', $rows);
@@ -84,8 +77,7 @@ class RecordTest extends DBConnected_TestCase
     /**
      * @covers RecordsMan\Record::callTrigger
      */
-    public function testCallTrigger()
-    {
+    public function testCallTrigger() {
         $testClass = $this;
         $trigger1WasCalled = false;
         $trigger2WasCalled = false;
@@ -113,8 +105,7 @@ class RecordTest extends DBConnected_TestCase
     /**
      * @covers RecordsMan\Record::get
      */
-    public function testGet()
-    {
+    public function testGet() {
         $existingItem = Item::findFirst('id!0', ['id' => 'DESC']);
         $this->assertEquals(7, $existingItem->get('id'));
         //TODO: unexisting fields getting
@@ -123,8 +114,7 @@ class RecordTest extends DBConnected_TestCase
     /**
      * @covers RecordsMan\Record::set
      */
-    public function testSet()
-    {
+    public function testSet() {
         /** @var Item $existingItem */
 //        $existingItem = Item::findFirst('id!0', ['id' => 'DESC']);
 //        $existingItem->set(['title' => 'Changed title', 'subitems_count' => 0]);
@@ -139,8 +129,7 @@ class RecordTest extends DBConnected_TestCase
     /**
      * @covers RecordsMan\Record::hasOwnField
      */
-    public function testHasOwnField()
-    {
+    public function testHasOwnField() {
         $item = Item::create();
         $this->assertTrue($item->hasOwnField('title'));
         $this->assertFalse($item->hasOwnField('price'));
@@ -149,8 +138,7 @@ class RecordTest extends DBConnected_TestCase
     /**
      * @covers RecordsMan\Record::toArray
      */
-    public function testToArray()
-    {
+    public function testToArray() {
         $item = Item::create(['title' => 'new item']);
         $asArray = $item->toArray();
         $this->assertInternalType('array', $asArray);
@@ -160,8 +148,7 @@ class RecordTest extends DBConnected_TestCase
     /**
      * @covers RecordsMan\Record::isMatch
      */
-    public function testIsMatch()
-    {
+    public function testIsMatch() {
         $item = Item::create(['title' => "'new' item'"]);
         $this->assertTrue($item->isMatch("title ~ 'new'%'"));
     }
@@ -169,8 +156,7 @@ class RecordTest extends DBConnected_TestCase
     /**
      * @covers RecordsMan\Record::reload
      */
-    public function testReload()
-    {
+    public function testReload() {
         /** @var Item $item */
         $item = Item::findFirst('id!0', ['id' => 'DESC']);
         $item->setTitle('Changed title');
@@ -181,8 +167,7 @@ class RecordTest extends DBConnected_TestCase
     /**
      * @covers RecordsMan\Record::getRelationTypeWith
      */
-    public function testGetRelationTypeWith()
-    {
+    public function testGetRelationTypeWith() {
         $item = Item::create();
         $subItem = SubItem::create();
         $this->assertEquals(Record::RELATION_MANY, $item->getRelationTypeWith('\Test\SubItem'));
@@ -195,8 +180,7 @@ class RecordTest extends DBConnected_TestCase
     /**
      * @covers RecordsMan\Record::getRelationParamsWith
      */
-    public function testGetRelationParamsWith()
-    {
+    public function testGetRelationParamsWith() {
         $item = Item::load(1);
         $relationParams = $item->getRelationParamsWith('\Test\SubItem');
         $this->assertEquals('item_id', $relationParams['foreignKey']);
@@ -206,21 +190,20 @@ class RecordTest extends DBConnected_TestCase
     /**
      * @covers RecordsMan\Record::loadForeign
      */
-    public function testLoadForeign()
-    {
+    public function testLoadForeign() {
         /** @var Item $item */
         $item = Item::load(1);
         /** @var Item $children */
         $children = $item->loadForeign('\Test\Item');
         $this->assertEquals(2, $children->count());
-        foreach($children as $child) {
+        foreach ($children as $child) {
             $this->assertEquals($item->id, $child->parent_id);
         }
         /** @var SubItem $subitems */
         $subitems = $item->loadForeign('\Test\SubItem');
         $this->assertEquals(2, $subitems->count());
         /** @var SubItem $subitem */
-        foreach($subitems as $subitem) {
+        foreach ($subitems as $subitem) {
             $this->assertEquals(
                 $item->id,
                 $subitem->get($subitem->getRelationParamsWith('\Test\Item')['foreignKey'])
@@ -244,8 +227,7 @@ class RecordTest extends DBConnected_TestCase
     /**
      * @covers RecordsMan\Record::__get
      */
-    public function test__get()
-    {
+    public function test__get() {
         /** @var Item $item */
         $item = Item::create(['title' => 'test']);
         $this->assertEquals('test', $item->title);
@@ -255,8 +237,7 @@ class RecordTest extends DBConnected_TestCase
      * @covers RecordsMan\Record::__set
      * @todo   Implement test__set().
      */
-    public function test__set()
-    {
+    public function test__set() {
         /** @var Item $item */
         $item = Item::create();
         $item->setTitle('test');
@@ -268,16 +249,14 @@ class RecordTest extends DBConnected_TestCase
     /**
      * @covers RecordsMan\Record::getMetaData
      */
-    public function testGetMetaData()
-    {
+    public function testGetMetaData() {
         $this->assertEquals('test_items', Item::getMetaData()['tableName']);
     }
 
     /**
      * @covers RecordsMan\Record::_fromArray
      */
-    public function test_fromArray()
-    {
+    public function test_fromArray() {
         /** @var Item $item */
         $item = Item::_fromArray([
             'id' => 20,
@@ -291,8 +270,7 @@ class RecordTest extends DBConnected_TestCase
     /**
      * @covers RecordsMan\Record::save
      */
-    public function testSave()
-    {
+    public function testSave() {
         // Adding new one test
         /** @var Item $item */
         $item = Item::create([
@@ -351,8 +329,7 @@ class RecordTest extends DBConnected_TestCase
     /**
      * @covers RecordsMan\Record::drop
      */
-    public function testDrop()
-    {
+    public function testDrop() {
         // Drop only test
         $itemsCount = Item::all()->count();
         /** @var Item $item */
@@ -379,8 +356,7 @@ class RecordTest extends DBConnected_TestCase
         $this->assertTrue(Item::find('parent_id = 2')->isEmpty());
     }
 
-    public function testAddProperty()
-    {
+    public function testAddProperty() {
         $loader = Item::getLoader();
         $loaderReflection = new \ReflectionClass($loader);
         $classesReflection = $loaderReflection->getProperty('_classes');
@@ -408,8 +384,7 @@ class RecordTest extends DBConnected_TestCase
         $this->assertCount(1, $_classes['\Test\SubItem']['properties']['field']['setters']);
     }
 
-    public function testGetProperty()
-    {
+    public function testGetProperty() {
         /** @var Item $item */
         $item = Item::load(1);
         Item::addProperty('id_info', function() {
@@ -438,8 +413,7 @@ class RecordTest extends DBConnected_TestCase
         $this->assertEquals('2x id of Test\SubItem is 4', $subItem->id_info);
     }
 
-    public function testSetProperty()
-    {
+    public function testSetProperty() {
         /** @var Item $item */
         $item = Item::load(1);
         Item::addProperty('setter_test', null, function($value) {
@@ -457,13 +431,10 @@ class RecordTest extends DBConnected_TestCase
         $this->assertEquals('4 Test\Item', $item->setter_test);
     }
 
-    public function testGetRawFieldValue()
-    {
+    public function testGetRawFieldValue() {
         /** @var Item $item */
         $item = Item::load(1);
         $this->assertEquals('Item7 (top level)', $item->getRawFieldValue('title'));
         $this->assertNull($item->getRawFieldValue('test'));
     }
-
-
 }

@@ -12,7 +12,7 @@ trait TExternalFields
     private $_externalFieldsChanged = [];
 
     /**
-     * @param string $fieldName Human readable field name
+     * @param string $fieldName Column name
      * @param string $tableName Table name
      * @param null|string $foreignKey if null then {class_name}_id
      */
@@ -28,6 +28,12 @@ trait TExternalFields
 
     private static function _externalFieldsInit() {
         self::addTrigger(self::SAVE, function(self $record) {
+            /** @var Record|TExternalFields $record */
+            if ($record->id) {
+                $record->_saveExternalFields();
+            }
+        });
+        self::addTrigger(self::SAVED, function(self $record) {
             $record->_saveExternalFields();
         });
         self::addTrigger(self::DELETED, function(self $record, $triggerName, $id) {
@@ -54,6 +60,9 @@ trait TExternalFields
             foreach ($fieldsValues as $placeholder => $value) {
                 $params[":{$placeholder}"] = $value;
             }
+            foreach ($fieldsValues as $placeholder => $value) {
+                $params[":_{$placeholder}"] = $value;
+            }
             Record::getAdapter()->query($sql, $params);
             unset($this->_externalFieldsChanged[$tableName]);
         }
@@ -67,7 +76,7 @@ trait TExternalFields
             return ":{$placeholder}";
         }, $colNames));
         $onDuplicate = implode(',', array_map(function($colName) {
-            return "`{$colName}`=:{$colName}";
+            return "`{$colName}`=:_{$colName}";
         }, $colNames));
         $foreignKey = $this->_getTableForeignKey($tableName);
         $sql = "INSERT INTO `{$tableName}` (`{$foreignKey}`,{$keys}) VALUES (:{$foreignKey},{$placeholders}) ";
@@ -89,7 +98,6 @@ trait TExternalFields
             Record::getAdapter()->query($sql);
         }
     }
-
 }
 
 function _createGetter($fieldName) {

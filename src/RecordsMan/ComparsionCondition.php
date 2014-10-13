@@ -1,8 +1,8 @@
 <?php
 namespace RecordsMan;
 
-class ComparsionCondition extends Condition {
-
+class ComparsionCondition extends Condition
+{
     private $_op1  = '';
     private $_op2  = '';
     private $_sign = '=';
@@ -101,7 +101,7 @@ class ComparsionCondition extends Condition {
     private function _testLikeCond($value, $notLike = false) {
         $escapeChars = ['(', ')', '@', '[', ']', '^', '$', '*', '.', '?', '+'];
         $pattern = $this->_op2;
-        foreach($escapeChars as $char) {
+        foreach ($escapeChars as $char) {
             $pattern = str_replace($char, "\\{$char}", $pattern);
         }
         $pattern = str_replace('%', '.*', $pattern);
@@ -111,7 +111,7 @@ class ComparsionCondition extends Condition {
 
     private function _testInCond($value) {
         $checkValues = explode(',', trim($this->_op2, ' []'));
-        foreach($checkValues as $check) {
+        foreach ($checkValues as $check) {
             if ($value == $this->_trimQuotes($check)) {
                 return true;
             }
@@ -121,7 +121,7 @@ class ComparsionCondition extends Condition {
 
     private function _testNotInCond($value) {
         $checkValues = explode(',', trim($this->_op2, ' []'));
-        foreach($checkValues as $check) {
+        foreach ($checkValues as $check) {
             if ($value == $this->_trimQuotes($check)) {
                 return false;
             }
@@ -138,5 +138,4 @@ class ComparsionCondition extends Condition {
         throw new RecordsManException("Condition: can't parse given args");
         //return PureSqlCondition::create($conditionString);
     }
-
 }

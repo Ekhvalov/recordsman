@@ -1,8 +1,8 @@
 <?php
 namespace RecordsMan;
 
-interface IDBAdapter {
-    
+interface IDBAdapter
+{
     public function getTables($dbName = null);
     
     public function getTableColumns($tableName);
@@ -17,7 +17,7 @@ interface IDBAdapter {
     
     public function fetchColumnArray($sql, $params = null, $columnNum = 0);
     
-    public function fetchSingleValue($sql, $params = null);                
+    public function fetchSingleValue($sql, $params = null);
     
     public function query($sql, $params = null);
     
@@ -30,7 +30,4 @@ interface IDBAdapter {
     public function commit();
     
     public function rollBack();
-    
 }
-
-?>

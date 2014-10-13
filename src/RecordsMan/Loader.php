@@ -1,9 +1,8 @@
 <?php
 namespace RecordsMan;
 
-
-class Loader {
-
+class Loader
+{
     private $_adapter = null;
     private $_cacher = null;
     private $_tables = [];
@@ -55,7 +54,7 @@ class Loader {
         $classMeta['fields'] = [];
         $classMeta['triggers'] = [];
         $classMeta['properties'] = [];
-        foreach($this->getAdapter()->getTableColumns($classMeta['tableName']) as $columnDef) {
+        foreach ($this->getAdapter()->getTableColumns($classMeta['tableName']) as $columnDef) {
             //TODO: auto detect primary key
             $classMeta['fields'][$columnDef['Field']] = $columnDef['Default'];
         }
@@ -115,7 +114,7 @@ class Loader {
         $qualifiedClass = $this->registerClass($className);
         $belongsTo = $this->getClassRelations($qualifiedClass, Record::RELATION_BELONGS);
         $classesWithCounters = [];
-        foreach($belongsTo as $parentClassName) {
+        foreach ($belongsTo as $parentClassName) {
             $relationParams = $this->getClassRelationParamsWith($parentClassName, $qualifiedClass);
             if (array_key_exists('counter', $relationParams) && ($parentClassName != $skipClass)) {
                 $classesWithCounters[$parentClassName] = $relationParams['counter'];
@@ -225,5 +224,4 @@ class Loader {
         }
         return $this->_tables;
     }
-
 }

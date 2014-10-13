@@ -2,9 +2,8 @@
 
 namespace RecordsMan;
 
-
-class WPCacheAdapter implements IRecordsCacher {
-
+class WPCacheAdapter implements IRecordsCacher
+{
     private $_cacher = null;
     private $_prefix = 'recordsman';
 
@@ -41,7 +40,7 @@ class WPCacheAdapter implements IRecordsCacher {
         $class = $set->getClassName();
         $fullKey = $this->_buildSetKey($class, $key);
         $ids = [];
-        foreach($set as $item) {
+        foreach ($set as $item) {
             $ids[] = $item->id;
             $this->storeRecord($item, $lifetime);
         }
@@ -55,5 +54,4 @@ class WPCacheAdapter implements IRecordsCacher {
     private function _buildSetKey($class, $key) {
         return "{$this->_prefix}:{$class}:{$key}";
     }
-
 }

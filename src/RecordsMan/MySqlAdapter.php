@@ -2,8 +2,8 @@
 
 namespace RecordsMan;
 
-class MySqlAdapter implements IDBAdapter {
-
+class MySqlAdapter implements IDBAdapter
+{
     private static $_updPattern = '/^\s*update\s+`?\w+`?\s+set/Uis';
     private static $_insPattern = '/^\s*insert\s+into/Uis';
 
@@ -111,8 +111,8 @@ class MySqlAdapter implements IDBAdapter {
         $sql = "INSERT INTO `{$table}` ";
         if (!is_integer($keys[0])) {
             $keys = array_map(function($field) {
-                        return "`{$field}`";
-                    }, $keys);
+                return "`{$field}`";
+            }, $keys);
             $sql.= '(' . rtrim(implode(',', $keys), ',') . ') ';
         }
         $sql.= "VALUES (" . rtrim(str_repeat('?,', count($vals)), ',') . ")";
@@ -190,7 +190,4 @@ class MySqlAdapter implements IDBAdapter {
         $this->_queriesLog[] = ['query' => $sql, 'params' => $params];
         return true;
     }
-
 }
-
-?>
