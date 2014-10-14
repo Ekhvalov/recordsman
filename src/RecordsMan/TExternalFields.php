@@ -94,8 +94,8 @@ trait TExternalFields
 
     private function _deleteExternalFields($id) {
         foreach (self::$_tableForeignKey as $tableName => $foreignKey) {
-            $sql = "DELETE FROM `{$tableName}` WHERE `{$foreignKey}`='{$id}' LIMIT 1";
-            Record::getAdapter()->query($sql);
+            $sql = "DELETE FROM `{$tableName}` WHERE `{$foreignKey}`=? LIMIT 1";
+            Record::getAdapter()->query($sql, [$id]);
         }
     }
 }

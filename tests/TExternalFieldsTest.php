@@ -112,13 +112,8 @@ class TExternalFieldsTest extends DBConnected_TestCase
         $this->assertEquals(11.3, $itemExt->length);
         $this->assertEquals(155, $itemExt->width);
         $this->assertEquals(14, $itemExt->height);
-        $itemExt->callTrigger(Record::DELETED);
-        $itemExt = ItemExt::load(1);
-        $this->assertNull($itemExt->city_name);
-        $this->assertNull($itemExt->city_population);
-        $this->assertNull($itemExt->sku);
-        $this->assertNull($itemExt->length);
-        $this->assertNull($itemExt->height);
-        $this->assertNull($itemExt->width);
+        $itemExt->drop();
+        $this->assertFalse(self::$adapter->fetchRow("SELECT * FROM `item_city` WHERE `item_ext_id`=1"));
+        $this->assertFalse(self::$adapter->fetchRow("SELECT * FROM `item_properties` WHERE `item_ext_id`=1"));
     }
 }

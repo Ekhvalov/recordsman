@@ -221,9 +221,6 @@ abstract class Record
         array_unshift($argsArray, $triggerName);
         array_unshift($argsArray, $this);
         $result = null;
-        if ($triggerName == self::DELETED) {
-            $argsArray[] = $this->id;
-        }
         foreach (self::getLoader()->getClassTriggersCallbacks($context, $triggerName) as $callback) {
             $result = call_user_func_array($callback, $argsArray);
             if ($result === false) {
@@ -442,8 +439,9 @@ abstract class Record
         $sql = "DELETE FROM `{$tableName}` WHERE `id`={$thisId} LIMIT 1";
         self::getAdapter()->query($sql);
         $this->_updateRelatedCounters();
+        $id = $this->_fields['id'];
         $this->_fields['id'] = 0;
-        $this->callTrigger(self::DELETED);
+        $this->callTrigger(self::DELETED, [$id]);
         return $this;
     }
 
