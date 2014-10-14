@@ -1,11 +1,11 @@
 <?php
 namespace RecordsMan;
 
-
 abstract class DBConnected_TestCase extends \PHPUnit_Framework_TestCase
 {
-
+    /** @var MySqlAdapter $adapter */
     protected static $adapter;
+    /** @var Loader $loader */
     protected static $loader;
 
     public static function loadTestData() {
@@ -24,7 +24,7 @@ abstract class DBConnected_TestCase extends \PHPUnit_Framework_TestCase
         self::$adapter = new MySqlAdapter('127.0.0.1', 'root', '', 'recordsman');
         self::$loader = new Loader(self::$adapter);
         Record::setLoader(self::$loader);
-        Record::getAdapter()->logging(true);
+        self::$adapter->logging(true);
         self::loadTestData();
     }
 
@@ -35,7 +35,6 @@ abstract class DBConnected_TestCase extends \PHPUnit_Framework_TestCase
         $parser->parseAndExecute(self::$adapter);
         $parser->free();
         self::$adapter->disconnect();
-        self::$adapter = NULL;
+        self::$adapter = null;
     }
-
 }
