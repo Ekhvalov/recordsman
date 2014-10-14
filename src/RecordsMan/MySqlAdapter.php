@@ -11,14 +11,22 @@ class MySqlAdapter implements IDBAdapter
     protected $_user = 'root';
     protected $_pass = '';
     protected $_dbname = '';
-    protected $_encodind = 'UTF8';
+    protected $_encoding = 'UTF8';
     protected $_connected = false;
+    /** @var \PDO $_db */
     protected $_db = null;
     protected $_logging = false;
     protected $_queriesLog = [];
     protected $_readonly = false;
 
-    public function __construct($host = 'localhost', $user = 'root', $pass = '', $db = '', $encoding = 'UTF8', $readonly = false) {
+    public function __construct(
+        $host = 'localhost',
+        $user = 'root',
+        $pass = '',
+        $db = '',
+        $encoding = 'UTF8',
+        $readonly = false
+    ) {
         if ($host && $user) {
             $this->connect($host, $user, $pass, $db, $encoding);
         }
@@ -38,61 +46,120 @@ class MySqlAdapter implements IDBAdapter
         $this->_db = null;
     }
 
+    /**
+     * @return bool
+     */
     public function isConnected() {
         return $this->_connected;
     }
 
+    /**
+     * @param null|string $dbName
+     * @return mixed
+     */
     public function getTables($dbName = null) {
         $sql = "SHOW TABLES" . ($dbName ? " FROM `{$dbName}`" : '');
         return $this->fetchColumnArray($sql);
     }
 
+    /**
+     * @param string $tableName
+     * @return array
+     */
     public function getTableColumns($tableName) {
         $sql = "SHOW COLUMNS FROM `{$tableName}`";
         //return $this->fetchColumnArray($sql);
         return $this->fetchRows($sql);
     }
 
+    /**
+     * @param string $sql
+     * @param null $params
+     * @param bool $assoc
+     * @return mixed
+     */
     public function fetchRow($sql, $params = null, $assoc = true) {
+        /** @var \PDOStatement $stmt */
         $stmt = $this->_queryPrepare($sql, $params);
         $stmt->setFetchMode($assoc ? \PDO::FETCH_ASSOC : \PDO::FETCH_NUM);
         return $this->_queryResult($stmt, $params, true);
     }
 
+    /**
+     * @param string $sql
+     * @param null $params
+     * @param bool $assoc
+     * @return array
+     */
     public function fetchRows($sql, $params = null, $assoc = true) {
+        /** @var \PDOStatement $stmt */
         $stmt = $this->_queryPrepare($sql, $params);
         $stmt->setFetchMode($assoc ? \PDO::FETCH_ASSOC : \PDO::FETCH_NUM);
         return $this->_queryResult($stmt, $params, false);
     }
 
+    /**
+     * @param string $sql
+     * @param null $params
+     * @param string $className
+     * @return mixed
+     */
     public function fetchObject($sql, $params = null, $className = 'stdClass') {
+        /** @var \PDOStatement $stmt */
         $stmt = $this->_queryPrepare($sql, $params);
         $stmt->setFetchMode(\PDO::FETCH_CLASS, $className);
         return $this->_queryResult($stmt, $params, true);
     }
 
+    /**
+     * @param string $sql
+     * @param null $params
+     * @param string $className
+     * @return mixed
+     */
     public function fetchObjects($sql, $params = null, $className = 'stdClass') {
+        /** @var \PDOStatement $stmt */
         $stmt = $this->_queryPrepare($sql, $params);
         $stmt->setFetchMode(\PDO::FETCH_CLASS, $className);
         return $this->_queryResult($stmt, $params, false);
     }
 
+    /**
+     * @param string $sql
+     * @param null $params
+     * @param int $columnNum
+     * @return mixed
+     */
     public function fetchColumnArray($sql, $params = null, $columnNum = 0) {
+        /** @var \PDOStatement $stmt */
         $stmt = $this->_queryPrepare($sql, $params);
         $stmt->setFetchMode(\PDO::FETCH_COLUMN, $columnNum);
         return $this->_queryResult($stmt, $params, false);
     }
 
+    /**
+     * @param string $sql
+     * @param null $params
+     * @return mixed
+     */
     public function fetchSingleValue($sql, $params = null) {
+        /** @var \PDOStatement $stmt */
         $stmt = $this->_queryPrepare($sql, $params);
         $stmt->setFetchMode(\PDO::FETCH_COLUMN, 0);
         return $this->_queryResult($stmt, $params, true);
     }
 
+    /**
+     * @param $sql
+     * @param null $params
+     * @return int
+     * @throws RecordsManException
+     */
     public function query($sql, $params = null) {
         if ($this->_readonly && $this->_checkQueryForDataChanging($sql)) {
             throw new RecordsManException("Recordsman adapter: Connection opened in read-only mode");
         }
+        /** @var \PDOStatement $stmt */
         $stmt = $this->_queryPrepare($sql, $params);
         if ($stmt->execute($params)) {
             return $stmt->rowCount();
@@ -102,6 +169,12 @@ class MySqlAdapter implements IDBAdapter
         }
     }
 
+    /**
+     * @param $table
+     * @param $values
+     * @return bool|string
+     * @throws RecordsManException
+     */
     public function insert($table, $values) {
         if (empty($values)) {
             $values = ['NULL'];
@@ -116,31 +189,47 @@ class MySqlAdapter implements IDBAdapter
             $sql.= '(' . rtrim(implode(',', $keys), ',') . ') ';
         }
         $sql.= "VALUES (" . rtrim(str_repeat('?,', count($vals)), ',') . ")";
-        if ($this->query($sql, $vals)) {
-            return $this->getLastInsertId();
-        }
+        return ($this->query($sql, $vals)) ? $this->getLastInsertId() : false;
     }
 
+    /**
+     * @return string
+     */
     public function getLastInsertId() {
         return $this->_db->lastInsertId();
     }
 
+    /**
+     * @return bool
+     */
     public function beginTransaction() {
         return $this->_db->beginTransaction();
     }
 
+    /**
+     * @return bool
+     */
     public function commit() {
         return $this->_db->commit();
     }
 
+    /**
+     * @return bool
+     */
     public function rollBack() {
         return $this->_db->rollBack();
     }
 
+    /**
+     * @return array
+     */
     public function getLog() {
         return $this->_queriesLog;
     }
 
+    /**
+     * @return string
+     */
     public function getLastQuery() {
         if (empty($this->_queriesLog)) {
             return '';
@@ -148,12 +237,19 @@ class MySqlAdapter implements IDBAdapter
         return $this->_queriesLog[count($this->_queriesLog) - 1]['query'];
     }
 
+    /**
+     * @param bool $mode
+     * @return MySqlAdapter
+     */
     public function logging($mode = true) {
         $this->_logging = !!$mode;
         return $this;
     }
 
-
+    /**
+     * @param $sql
+     * @return bool
+     */
     protected function _checkQueryForDataChanging($sql) {
         return preg_match(self::$_insPattern, $sql) || preg_match(self::$_updPattern, $sql);
     }
@@ -167,19 +263,30 @@ class MySqlAdapter implements IDBAdapter
         $this->_connected = true;
     }
 
+    /**
+     * @param $sql
+     * @param null $params
+     * @return \PDOStatement
+     */
     protected function _queryPrepare($sql, $params = null) {
         $this->isConnected() or $this->_realConnect();
         $this->_log($sql, $params);
         return $this->_db->prepare($sql);
     }
 
+    /**
+     * @param \PDOStatement $statement
+     * @param null $params
+     * @param bool $oneRow
+     * @return mixed
+     * @throws \RuntimeException
+     */
     protected function _queryResult($statement, $params = null, $oneRow = false) {
         if ($statement->execute($params ? : [])) {
             return $oneRow ? $statement->fetch() : $statement->fetchAll();
         } else {
             $err = $statement->errorInfo();
-            //$statement->debugDumpParams();
-            throw new \RuntimeException("MySql error: {$err[2]}", /* $statement->errorCode() ?: */ 101);
+            throw new \RuntimeException("MySql error: {$err[2]}", 101);
         }
     }
 
