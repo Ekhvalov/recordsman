@@ -1,7 +1,7 @@
 <?php
 namespace RecordsMan;
 
-class MysqlDumbParser implements IDumpParser
+class MySQLDumbParser implements IDumpParser
 {
     protected $_source     = null;
     protected $_sourceType = null;
