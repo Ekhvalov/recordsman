@@ -46,7 +46,7 @@ trait TExternalFields
             return $foreignKey;
         }
         if (!isset(self::$_foreignKey)) {
-            $foreignKey =  Helper::ucFirstToUnderscore(array_pop(explode('\\', get_class())));
+            $foreignKey =  Helper::ucFirstToUnderscore(Helper::extractClassName(get_class()));
             self::$_foreignKey = "{$foreignKey}_id";
         }
         return self::$_foreignKey;
