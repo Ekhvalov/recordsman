@@ -1,7 +1,6 @@
 <?php
 namespace RecordsMan;
 
-
 class MySQLMasterSlaveAdapter extends MySQLAdapter
 {
     /**
@@ -25,4 +24,13 @@ class MySQLMasterSlaveAdapter extends MySQLAdapter
         throw new RecordsManException("MysqlMasterSlaveAdapter: can't write to slave");
     }
 
+    /**
+     * @return string
+     */
+    public function getLastInsertId() {
+        if (!is_null($this->_masterConn)) {
+            return $this->_masterConn->getLastInsertId();
+        }
+        return $this->_db->lastInsertId();
+    }
 }
