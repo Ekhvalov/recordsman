@@ -133,16 +133,18 @@ class ItemsRelation extends Record
  */
 class ItemExt extends Record
 {
+    private static $baseInitCalls = 0;
     use TExternalFields;
     protected static $tableName = 'test_items';
 
     public static function init() {
-        ItemExt::addExternalField('city_name', 'item_city');
-        ItemExt::addExternalField('city_population', 'item_city');
-        ItemExt::addExternalField('sku', 'item_properties');
-        ItemExt::addExternalField('length', 'item_properties');
-        ItemExt::addExternalField('width', 'item_properties');
-        ItemExt::addExternalField('height', 'item_properties');
+        self::$baseInitCalls++;
+        static::addExternalField('city_name', 'item_city');
+        static::addExternalField('city_population', 'item_city');
+        static::addExternalField('sku', 'item_properties');
+        static::addExternalField('length', 'item_properties');
+        static::addExternalField('width', 'item_properties');
+        static::addExternalField('height', 'item_properties');
     }
 
     /**
@@ -191,5 +193,52 @@ class ItemExt extends Record
      */
     public function setWidth($width) {
         return $this->set('width', $width);
+    }
+}
+
+/**
+ * Class ItemBase
+ * @package Test
+ * @property-read string $title
+ * @property-read string $width
+ */
+class ItemBase extends Record
+{
+    protected static $tableName = 'item_base';
+
+    use TExternalFields;
+    public static function init() {
+        static::addExternalField('width', 'item_base_ext');
+    }
+
+    /**
+     * @param $width
+     * @return \Test\ItemBase
+     * @throws \RecordsMan\RecordsManException
+     */
+    public function setWidth($width) {
+        return $this->set('width', $width);
+    }
+}
+
+/**
+ * Class HeirItemExt
+ * @package Test
+ * @property-read string $height
+ */
+class ItemHeir extends ItemBase
+{
+    public static function init() {
+        parent::init();
+        static::addExternalField('height', 'item_heir_ext');
+    }
+
+    /**
+     * @param $height
+     * @return \Test\ItemHeir
+     * @throws \RecordsMan\RecordsManException
+     */
+    public function setHeight($height) {
+        return $this->set('height', $height);
     }
 }

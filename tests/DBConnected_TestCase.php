@@ -9,7 +9,7 @@ abstract class DBConnected_TestCase extends \PHPUnit_Framework_TestCase
     protected static $loader;
 
     public static function loadTestData() {
-        $parser = new MysqlDumbParser();
+        $parser = new MySQLDumbParser();
         $parser->setSourceFile(__DIR__ . DIRECTORY_SEPARATOR . 'testing_items_dump.sql');
         $parser->parseAndExecute(self::$adapter);
         $parser->free();
@@ -21,7 +21,7 @@ abstract class DBConnected_TestCase extends \PHPUnit_Framework_TestCase
      */
     public static function setUpBeforeClass()
     {
-        self::$adapter = new MySqlAdapter('127.0.0.1', 'root', '', 'recordsman');
+        self::$adapter = new MySQLAdapter('127.0.0.1', 'root', '', 'recordsman');
         self::$loader = new Loader(self::$adapter);
         Record::setLoader(self::$loader);
         self::$adapter->logging(true);
@@ -30,7 +30,7 @@ abstract class DBConnected_TestCase extends \PHPUnit_Framework_TestCase
 
     public static function tearDownAfterClass()
     {
-        $parser = new MysqlDumbParser();
+        $parser = new MySQLDumbParser();
         $parser->setSourceFile(__DIR__ . DIRECTORY_SEPARATOR . 'testing_items_remove.sql');
         $parser->parseAndExecute(self::$adapter);
         $parser->free();

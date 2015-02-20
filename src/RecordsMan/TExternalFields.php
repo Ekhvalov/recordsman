@@ -3,13 +3,13 @@ namespace RecordsMan;
 
 trait TExternalFields
 {
-    private static $_fieldTable = [];
-    private static $_tableForeignKey = [];
+    protected static $_fieldTable = [];
+    protected static $_tableForeignKey = [];
     private static $_initialized = false;
     private static $_foreignKey;
 
-    private $_externalFieldsCache = [];
-    private $_externalFieldsChanged = [];
+    protected $_externalFieldsCache = [];
+    protected $_externalFieldsChanged = [];
 
     /**
      * @param string $fieldName Column name
@@ -84,7 +84,7 @@ trait TExternalFields
         return $sql;
     }
 
-    private function _getFieldTableName($fieldName) {
+    protected function _getFieldTableName($fieldName) {
         return self::$_fieldTable[$fieldName];
     }
 

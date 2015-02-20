@@ -133,3 +133,30 @@ CREATE TABLE `item_properties` (
   UNIQUE KEY (`item_ext_id`),
   KEY (`sku`)
 ) ENGINE=MyISAM  DEFAULT CHARSET=utf8;
+
+DROP TABLE IF EXISTS `item_base`;
+CREATE TABLE `item_base` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `title` VARCHAR(255) NOT NULL ,
+  PRIMARY KEY (`id`)
+) ENGINE=MyISAM  DEFAULT CHARSET=utf8;
+
+
+DROP TABLE IF EXISTS `item_base_ext`;
+CREATE TABLE `item_base_ext` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `item_base_id` INT(11) NOT NULL,
+  `width` VARCHAR(255) NOT NULL ,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY (`item_base_id`)
+) ENGINE=MyISAM  DEFAULT CHARSET=utf8;
+
+
+DROP TABLE IF EXISTS `item_heir_ext`;
+CREATE TABLE `item_heir_ext` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `item_base_id` INT(11) NOT NULL,
+  `height` VARCHAR(255) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY (`item_base_id`)
+) ENGINE=MyISAM  DEFAULT CHARSET=utf8;
