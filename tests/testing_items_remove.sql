@@ -7,3 +7,4 @@ DROP TABLE IF EXISTS `test_items_relations`;
 DROP TABLE IF EXISTS `test_related_items`;
 DROP TABLE IF EXISTS `item_city`;
 DROP TABLE IF EXISTS `item_properties`;
+DROP TABLE IF EXISTS `item_city_heir`;
