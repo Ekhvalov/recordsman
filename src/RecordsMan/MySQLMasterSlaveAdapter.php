@@ -17,6 +17,12 @@ class MySQLMasterSlaveAdapter extends MySQLAdapter
         return $this;
     }
 
+    /**
+     * @param $sql
+     * @param null $params
+     * @return mixed
+     * @throws RecordsManException
+     */
     public function query($sql, $params = null) {
         if (!is_null($this->_masterConn)) {
             return $this->_masterConn->query($sql, $params);

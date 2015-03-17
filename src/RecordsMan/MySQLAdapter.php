@@ -155,7 +155,7 @@ class MySQLAdapter implements IDBAdapter
         if ($stmt->execute($params)) {
             return $stmt->rowCount();
         } else {
-            throw new RecordsManException("{$stmt->errorInfo()[2]}; Query was: {$sql}", $stmt->errorCode());
+            throw new RecordsManException("{$stmt->errorInfo()[2]}; Query was: {$sql}", 111);
         }
     }
 
@@ -261,14 +261,14 @@ class MySQLAdapter implements IDBAdapter
      * @param null $params
      * @param bool $oneRow
      * @return mixed
-     * @throws \RuntimeException
+     * @throws RecordsManException
      */
     protected function _queryResult($statement, $params = null, $oneRow = false) {
         if ($statement->execute($params ? : [])) {
             return $oneRow ? $statement->fetch() : $statement->fetchAll();
         } else {
             $err = $statement->errorInfo();
-            throw new \RuntimeException("MySql error: {$err[2]}", 101);
+            throw new RecordsManException("MySql error: {$err[2]}", 101);
         }
     }
 
