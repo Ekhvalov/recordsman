@@ -11,6 +11,9 @@
             "email": "safron@webproducers.ru"
         }
     ],
+    "require": {
+      "php": ">=5.5.0"
+    },
     "autoload": {
         "psr-0": { "RecordsMan": "src/" }
     }
