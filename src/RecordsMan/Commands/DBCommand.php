@@ -15,6 +15,7 @@ use RecordsMan\SqlFileMigrator;
  *
  * Available commands:
  * migrate - perform schema migrations from all connected sources
+ * drop    - clear all tables
  */
 class DBCommand extends ActionCommand {
 
@@ -41,7 +42,7 @@ class DBCommand extends ActionCommand {
     }
 
     public function mainAction(CommandArgs $_) {
-        print("Use one of specified actions: migrate, \n");
+        print("Use one of specified actions: migrate, drop\n");
     }
 
     public function migrateAction(CommandArgs $args) {
@@ -57,6 +58,16 @@ class DBCommand extends ActionCommand {
             }
         }
         return $status;
+    }
+
+    public function dropAction(CommandArgs $_) {
+        foreach ($this->_adapter->getTables() as $table) {
+            if (preg_match('/^migrations/', $table)) {
+                continue;
+            }
+            $this->_adapter->query("DELETE FROM `{$table}`");
+        }
+        return 0;
     }
 
     private function _migrateSource($name, $path, $version = 0) {
