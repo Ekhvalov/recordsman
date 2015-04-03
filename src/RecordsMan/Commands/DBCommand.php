@@ -28,7 +28,7 @@ class DBCommand extends ActionCommand {
     public static function argsDef() {
         return new ArgsDef([
             new ArgDef('version', 'Migrate to specified version', '', false, 0, ArgDef::INT),
-            new ArgDef('source', 'Migrate only specified source'),
+            new ArgDef('source', 'Migrate only specified source')
         ]);
     }
 
