@@ -62,10 +62,7 @@ class DBCommand extends ActionCommand {
 
     public function dropAction(CommandArgs $_) {
         foreach ($this->_adapter->getTables() as $table) {
-            if (preg_match('/^migrations/', $table)) {
-                continue;
-            }
-            $this->_adapter->query("DELETE FROM `{$table}`");
+            $this->_adapter->query("DROP TABLE `{$table}`");
         }
         return 0;
     }
