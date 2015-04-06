@@ -245,7 +245,7 @@ abstract class Record
         if (isset($this->_fields[$fieldName])) {
             return $this->_fields[$fieldName];
         }
-        $foreignClass = Helper::getClassNamespace($context) . ucfirst(Helper::getSingular($fieldName));
+        $foreignClass = $this->_lookupForeignByFieldname($context, $fieldName);
         if (class_exists($foreignClass)) {
             $relation = $this->getRelationTypeWith($foreignClass);
             if ($relation != self::RELATION_NONE) {
@@ -692,5 +692,25 @@ abstract class Record
                 throw new RecordsManException($msg, 85);
             }
         }
+    }
+
+    private function _lookupForeignByFieldname($context, $fieldname) {
+        $foreignClass = ucfirst(Helper::getSingular($fieldname));
+        $lookup = function($foreignClass, $relations) {
+            foreach ($relations as $relatedName) {
+                $chunks = explode('\\', $relatedName);
+                $className = $chunks[count($chunks)-1];
+                if ($className == $foreignClass) {
+                    return $relatedName;
+                }
+            }
+        };
+        return $lookup(
+            $foreignClass,
+            self::getLoader()->getClassRelations($context, self::RELATION_MANY)
+        ) ?: $lookup(
+            $foreignClass,
+            self::getLoader()->getClassRelations($context, self::RELATION_BELONGS)
+        );
     }
 }
