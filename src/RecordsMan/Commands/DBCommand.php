@@ -5,7 +5,7 @@ use WP\App\Console\ActionCommand;
 use WP\App\Console\ArgsDef;
 use WP\App\Console\ArgDef;
 use WP\App\Console\CommandArgs;
-use RecordsMan\MysqlDumbParser;
+use RecordsMan\MySQLDumbParser;
 use RecordsMan\SqlFileMigrator;
 
 /**
@@ -69,7 +69,7 @@ class DBCommand extends ActionCommand {
 
     private function _migrateSource($name, $path, $version = 0) {
         $tabName = "migrations_{$name}";
-        $parser = new MysqlDumbParser();
+        $parser = new MySQLDumbParser();
         $migrator = new SqlFileMigrator($this->_adapter, $parser);
         $migrator->setSourceDir($path);
         $migrator->setMigrationTab($tabName);
