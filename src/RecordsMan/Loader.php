@@ -110,6 +110,13 @@ class Loader
         );
     }
 
+    public function addClassRelation($className, $withClass, $relationType, $properties) {
+        $className = $this->registerClass($className);
+        $withClass = $this->registerClass($withClass);
+        $key = ($relationType == Record::RELATION_BELONGS) ? 'belongsTo' : 'hasMany';
+        $this->_classes[$className][$key][$withClass] = $properties;
+    }
+
     public function getClassCounters($className, $skipClass = null) {
         $qualifiedClass = $this->registerClass($className);
         $belongsTo = $this->getClassRelations($qualifiedClass, Record::RELATION_BELONGS);
