@@ -2,7 +2,7 @@
 namespace RecordsMan\Commands;
 
 use WP\App\Console\ActionCommand;
-use WP\App\Console\ArgsDef;
+use WP\App\Console\ArgList;
 use WP\App\Console\ArgDef;
 use WP\App\Console\CommandArgs;
 use RecordsMan\MySQLDumbParser;
@@ -25,10 +25,13 @@ class DBCommand extends ActionCommand {
     private $_adapter = null;
 
 
-    public static function argsDef() {
-        return new ArgsDef([
-            new ArgDef('version', 'Migrate to specified version', '', false, 0, ArgDef::INT),
-            new ArgDef('source', 'Migrate only specified source')
+    public static function args() {
+        return new ArgList([
+            ArgDef::withName('version')
+                ->desc('Migrate to specified version (default: 0 - migrate to last version)')
+                ->defaultVal(0)
+                ->type(ArgDef::INT),
+            ArgDef::withName('source')->desc('Migrate only specified source')
         ]);
     }
 
