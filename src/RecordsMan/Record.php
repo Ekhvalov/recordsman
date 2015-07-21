@@ -242,6 +242,9 @@ abstract class Record
             }
             return $result;
         }
+        if (isset($this->_changed[$fieldName])) {
+            return $this->_changed[$fieldName];
+        }
         if (isset($this->_fields[$fieldName])) {
             return $this->_fields[$fieldName];
         }
@@ -292,10 +295,9 @@ abstract class Record
         }
         if ($this->hasOwnField($fieldName)) {
             if ($this->_fields[$fieldName] != $value) {
-                $this->_fields[$fieldName] = $value;
-                if (!in_array($fieldName, $this->_changed)) {
-                    $this->_changed[] = $fieldName;
-                }
+                $this->_changed[$fieldName] = $value;
+            } elseif (isset($this->_changed[$fieldName])) {
+                unset($this->_changed[$fieldName]);
             }
             return $this;
         }
@@ -306,7 +308,7 @@ abstract class Record
                 return $this->setForeign($foreignClass, $value);
             }
         }
-        $this->_fields[$fieldNameOrFieldsArray] = $value;
+        $this->_changed[$fieldNameOrFieldsArray] = $value;
         return $this;
     }
 
@@ -366,7 +368,8 @@ abstract class Record
      * @return Record
      */
     public function save($testRelations = true) {
-        if ($this->callTrigger(self::SAVE, [$this->_changed]) === false) {
+        $changedKeys = array_keys($this->_changed);
+        if ($this->callTrigger(self::SAVE, [$changedKeys]) === false) {
             return $this;
         }
         if (!$this->wasChanged()) {
@@ -375,28 +378,20 @@ abstract class Record
         $thisId = $this->get('id');
         $context = $this->_getContext();
         $tableName = self::getLoader()->getClassTableName($context);
-        $actualFields = [];
-        // filtering only own fields
-        foreach ($this->_changed as $fieldName) {
-            $value = $this->get($fieldName);
-            if (($fieldName != 'id') && $this->hasOwnField($fieldName)) {
-                $actualFields[$fieldName] = $value;
-            }
-        }
         if ($testRelations) {
             $this->_checkForeignKeys();
         }
         if ($thisId) {
             // updating existing entry
             if ($this->hasOwnField('updated_at')) {
-                $this->_fields['updated_at'] = $actualFields['updated_at'] = time();
+                $this->_changed['updated_at'] = time();
             }
-            if ($this->callTrigger(self::SAVE_UPDATE, [$this->_changed]) === false) {
+            if ($this->callTrigger(self::SAVE_UPDATE, [$changedKeys]) === false) {
                 return $this;
             }
             $sqlParams = [];
             $sql = "UPDATE `{$tableName}` SET ";
-            foreach ($actualFields as $fieldName => $value) {
+            foreach ($this->_changed as $fieldName => $value) {
                 $sql.= "`{$fieldName}`=?,";
                 $sqlParams[] = $value;
             }
@@ -404,25 +399,23 @@ abstract class Record
             $sql.= " WHERE `id`={$thisId} LIMIT 1";
             self::getAdapter()->query($sql, $sqlParams);
             $this->_updateRelatedCounters(); //TODO: optimize: only if foreign keys was changed
-            $this->callTrigger(self::SAVED, [$this->_changed]);
-            $this->callTrigger(self::SAVE_UPDATED, [$this->_changed]);
-            $this->_changed = [];
-            return $this;
+            $this->callTrigger(self::SAVED, [$changedKeys]);
+            $this->callTrigger(self::SAVE_UPDATED, [$changedKeys]);
+            return $this->_applyChanges();
         }
         // creating new entry
         if ($this->hasOwnField('created_at')) {
-            $this->_fields['created_at'] = $actualFields['created_at'] = time();
+            $this->_changed['created_at'] = time();
         }
         if ($this->callTrigger(self::SAVE_CREATE, [$this->_changed]) === false) {
             return $this;
         }
-        self::getAdapter()->insert($tableName, $actualFields);
+        self::getAdapter()->insert($tableName, $this->_changed);
         $this->_fields['id'] = self::getAdapter()->getLastInsertId();
         $this->_updateRelatedCounters();
-        $this->callTrigger(self::SAVED, [$this->_changed]);
-        $this->callTrigger(self::SAVE_CREATED, [$this->_changed]);
-        $this->_changed = [];
-        return $this;
+        $this->callTrigger(self::SAVED, [$changedKeys]);
+        $this->callTrigger(self::SAVE_CREATED, [$changedKeys]);
+        return $this->_applyChanges();
     }
 
     public function drop() {
@@ -712,5 +705,13 @@ abstract class Record
             $foreignClass,
             self::getLoader()->getClassRelations($context, self::RELATION_BELONGS)
         );
+    }
+
+    private function _applyChanges() {
+        foreach ($this->_changed as $fieldName => $value) {
+            $this->_fields[$fieldName] = $value;
+        }
+        $this->_changed = [];
+        return $this;
     }
 }
