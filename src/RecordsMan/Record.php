@@ -643,26 +643,24 @@ abstract class Record
         foreach ($classesWithCounters as $className => $counterField) {
             $relationParams = $loader->getClassRelationParamsWith($context, $className);
             $foreignKey = $relationParams['foreignKey'];
-            $foreignItemId = $this->get($foreignKey);
-            if ($context == $className) {
-                // Self-related classes
-                if (!$foreignItemId) {
-                    continue ;
-                }
-                /** @var Record $parentItem */
-                $parentItem = $className::load($foreignItemId);
-                $sql = "SELECT COUNT(*) FROM `{$thisTab}` WHERE `{$foreignKey}`={$foreignItemId}";
-                $count = self::getAdapter()->fetchSingleValue($sql);
-                $parentItem->set($counterField, $count)->save(false);
-                continue ;
+            if (!isset($this->_changed[$foreignKey])) {
+                continue;
             }
-            // Foreign relations
-            $parentItem = $className::load($foreignItemId);
+            $newForeignItemId = $this->_changed[$foreignKey];
+            $prevForeignItemId = $this->_fields[$foreignKey];
             $parentTab = $loader->getClassTableName($className);
+            // Updating new foreign item
             $sql = "UPDATE `{$parentTab}` SET `{$counterField}` = (";
-            $sql.= "SELECT COUNT(*) FROM `{$thisTab}` WHERE `{$foreignKey}`={$parentItem->id}";
-            $sql.= ") WHERE `id`={$parentItem->id} LIMIT 1";
+            $sql.= "SELECT COUNT(*) FROM `{$thisTab}` WHERE `{$foreignKey}`={$newForeignItemId}";
+            $sql.= ") WHERE `id`={$newForeignItemId} LIMIT 1";
             self::getAdapter()->query($sql);
+            if ($prevForeignItemId) {
+                // Updating previous foreign item
+                $sql = "UPDATE `{$parentTab}` SET `{$counterField}` = (";
+                $sql.= "SELECT COUNT(*) FROM `{$thisTab}` WHERE `{$foreignKey}`={$prevForeignItemId}";
+                $sql.= ") WHERE `id`={$prevForeignItemId} LIMIT 1";
+                self::getAdapter()->query($sql);
+            }
         }
     }
 
