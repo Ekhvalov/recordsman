@@ -398,7 +398,7 @@ abstract class Record
             $sql = rtrim($sql, ',');
             $sql.= " WHERE `id`={$thisId} LIMIT 1";
             self::getAdapter()->query($sql, $sqlParams);
-            $this->_updateRelatedCounters(); //TODO: optimize: only if foreign keys was changed
+            $this->_updateRelatedCounters();
             $this->callTrigger(self::SAVED, [$changedKeys]);
             $this->callTrigger(self::SAVE_UPDATED, [$changedKeys]);
             return $this->_applyChanges();
@@ -431,7 +431,7 @@ abstract class Record
         $tableName = self::getLoader()->getClassTableName($context);
         $sql = "DELETE FROM `{$tableName}` WHERE `id`={$thisId} LIMIT 1";
         self::getAdapter()->query($sql);
-        $this->_updateRelatedCounters();
+        $this->_updateRelatedCounters(false);
         $id = $this->_fields['id'];
         $this->_fields['id'] = 0;
         $this->callTrigger(self::DELETED, [$id]);
@@ -634,7 +634,7 @@ abstract class Record
         }
     }
 
-    private function _updateRelatedCounters() {
+    private function _updateRelatedCounters($checkChanged = true) {
         $context = $this->_getContext();
         $loader = self::getLoader();
         $classesWithCounters = $loader->getClassCounters($context);
@@ -643,17 +643,19 @@ abstract class Record
         foreach ($classesWithCounters as $className => $counterField) {
             $relationParams = $loader->getClassRelationParamsWith($context, $className);
             $foreignKey = $relationParams['foreignKey'];
-            if (!isset($this->_changed[$foreignKey])) {
+            if ($checkChanged && !isset($this->_changed[$foreignKey])) {
                 continue;
             }
-            $newForeignItemId = $this->_changed[$foreignKey];
-            $prevForeignItemId = $this->_fields[$foreignKey];
+            $newForeignItemId = isset($this->_changed[$foreignKey]) ? $this->_changed[$foreignKey] : null;
+            $prevForeignItemId = isset($this->_fields[$foreignKey]) ? $this->_fields[$foreignKey] : null;
             $parentTab = $loader->getClassTableName($className);
-            // Updating new foreign item
-            $sql = "UPDATE `{$parentTab}` SET `{$counterField}` = (";
-            $sql.= "SELECT COUNT(*) FROM `{$thisTab}` WHERE `{$foreignKey}`={$newForeignItemId}";
-            $sql.= ") WHERE `id`={$newForeignItemId} LIMIT 1";
-            self::getAdapter()->query($sql);
+            if ($newForeignItemId) {
+                // Updating new foreign item
+                $sql = "UPDATE `{$parentTab}` SET `{$counterField}` = (";
+                $sql.= "SELECT COUNT(*) FROM `{$thisTab}` WHERE `{$foreignKey}`={$newForeignItemId}";
+                $sql.= ") WHERE `id`={$newForeignItemId} LIMIT 1";
+                self::getAdapter()->query($sql);
+            }
             if ($prevForeignItemId) {
                 // Updating previous foreign item
                 $sql = "UPDATE `{$parentTab}` SET `{$counterField}` = (";
