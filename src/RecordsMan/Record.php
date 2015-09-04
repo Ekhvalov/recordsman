@@ -2,7 +2,7 @@
 namespace RecordsMan;
 
 /**
- * @property int $id
+ * @property-read int $id
  */
 abstract class Record
 {
@@ -39,7 +39,7 @@ abstract class Record
      * Loads a single instance by primary key
      *
      * @param int $id PK value
-     * @return Record Returns Record object or throws exception if no records found
+     * @return static Returns Record object or throws exception if no records found
      * @throws RecordsManException
      */
     public static function load($id) {
@@ -54,10 +54,9 @@ abstract class Record
      * Creates an instance
      *
      * @param array $fields Initialize with fields values
-     * @return Record
+     * @return static
      */
     public static function create($fields = []) {
-        /** @var Record $record */
         $record = new static(self::getLoader()->getFieldsDefinition(get_called_class()));
         if (!empty($fields) && is_array($fields)) {
             $record->set($fields);
@@ -96,9 +95,11 @@ abstract class Record
     /**
      * Finds first record by given conditions.
      *
-     * @param array|string|Condition $condition See find() descr.
-     * @param array|string $order See find() descr.
-     * @return null|Record Returns Record object or null if no records found
+     * @param array|string|Condition $condition
+     * @see Record::find() description
+     * @param array|string $order
+     * @see Record::find() description
+     * @return null|static Returns Record object or null if no records found
      */
     public static function findFirst($condition = null, $order = null) {
         $rows = static::_select($condition, $order, 1);
@@ -128,7 +129,7 @@ abstract class Record
      * @param string $sqlQuery Query text (input parameters can be placeholdered by "?")
      * @param array $sqlParams Parameters array for substitution in query
      * @param bool $singleItem If true, returns single Record object, else - RecordSet
-     * @return null|Record|RecordSet
+     * @return null|static|RecordSet
      */
     public static function findBySql($sqlQuery, $sqlParams = null, $singleItem = false) {
         if ($singleItem) {
@@ -142,6 +143,13 @@ abstract class Record
         return RecordSet::createFromSql($qualifiedName, $sqlQuery, $sqlParams);
     }
 
+    /**
+     * @param int $id
+     * @param bool $autocache
+     * @param null $lifetime
+     * @return static
+     * @throws RecordsManException
+     */
     public static function loadFromCache($id, $autocache = false, $lifetime = null) {
         $qualifiedName = Helper::qualifyClassName(get_called_class());
         $cacher = self::getCacheProvider();
@@ -157,6 +165,10 @@ abstract class Record
         return $item;
     }
 
+    /**
+     * @param $key
+     * @return null|RecordSet
+     */
     public static function loadCachedSet($key) {
         $qualifiedName = Helper::qualifyClassName(get_called_class());
         return RecordSet::createFromCache($qualifiedName, $key);
@@ -182,6 +194,10 @@ abstract class Record
     }
 
     //TODO: tests
+    /**
+     * @param $condition
+     * @return int
+     */
     public static function count($condition = null) {
         $sql = Helper::createCountQuery(
             self::getLoader()->getClassTableName(get_called_class()),
@@ -192,7 +208,10 @@ abstract class Record
 
 
     ////////// Triggers
-
+    /**
+     * @param $triggerType
+     * @param callable $callback
+     */
     public static function addTrigger($triggerType, \Closure $callback) {
         $defTriggers = self::getDefaultTriggersList();
         $loader = self::getLoader();
@@ -232,7 +251,10 @@ abstract class Record
 
 
     ////////// Fields manipulating methods
-
+    /**
+     * @param string $fieldName
+     * @return mixed|null
+     */
     public function get($fieldName) {
         $context = $this->_getContext();
         if (self::getLoader()->hasClassPropertyGetterCallbacks($context, $fieldName)) {
@@ -258,6 +280,10 @@ abstract class Record
         return null;
     }
 
+    /**
+     * @param string $fieldName
+     * @return null
+     */
     public function getRawFieldValue($fieldName) {
         return (isset($this->_fields[$fieldName])) ? $this->_fields[$fieldName] : null;
     }
@@ -312,11 +338,19 @@ abstract class Record
         return $this;
     }
 
+    /**
+     * @param string $fieldName
+     * @return bool
+     */
     public function hasOwnField($fieldName) {
         return self::getLoader()->isFieldExists($this->_getContext(), $fieldName);
     }
 
     //TODO: tests
+    /**
+     * @param array $neededFields
+     * @return array
+     */
     public function toArray($neededFields = []) {
         $context = $this->_getContext();
         $classFields = self::getLoader()->getFieldsDefinition($context);
@@ -335,13 +369,19 @@ abstract class Record
         return $res;
     }
 
+    /**
+     * @param $condition
+     * @return bool
+     */
     public function isMatch($condition) {
         return Condition::create($condition)->test($this->_fields);
     }
 
 
     ////////// Creating / deleting/ updating
-
+    /**
+     * @return bool
+     */
     public function wasChanged() {
         return !$this->id || !empty($this->_changed);
     }
@@ -365,7 +405,7 @@ abstract class Record
 
     /**
      * @param bool $testRelations
-     * @return Record
+     * @return static
      */
     public function save($testRelations = true) {
         $changedKeys = array_keys($this->_changed);
@@ -418,6 +458,9 @@ abstract class Record
         return $this->_applyChanges();
     }
 
+    /**
+     * @return static
+     */
     public function drop() {
         if ($this->callTrigger(self::DELETE) === false) {
             return $this;
@@ -438,6 +481,10 @@ abstract class Record
         return $this;
     }
 
+    /**
+     * @param null $lifetime
+     * @return static
+     */
     public function cache($lifetime = null) {
         $cacher = self::getCacheProvider();
         $cacher->storeRecord($this, $lifetime);
@@ -446,7 +493,10 @@ abstract class Record
 
 
     ////////// Class relations manipulation
-
+    /**
+     * @param $class
+     * @return bool|int
+     */
     public function getRelationTypeWith($class) {
         if ($class instanceof Record) {
             $class = Helper::qualifyClassName(get_class($class));
@@ -454,10 +504,20 @@ abstract class Record
         return self::getLoader()->getClassRelationTypeWith($this->_getContext(), $class);
     }
 
+    /**
+     * @param $class
+     * @return mixed|null
+     * @throws RecordsManException
+     */
     public function getRelationParamsWith($class) {
         return self::getLoader()->getClassRelationParamsWith($this->_getContext(), $class);
     }
 
+    /**
+     * @param $className
+     * @return mixed
+     * @throws RecordsManException
+     */
     public function loadForeign($className) {
         $foreignClass = Helper::qualifyClassName($className);
         if (isset($this->_foreign[$foreignClass])) {
@@ -478,6 +538,12 @@ abstract class Record
         return $this->_foreign[$foreignClass];
     }
 
+    /**
+     * @param $className
+     * @param $records
+     * @return static
+     * @throws RecordsManException
+     */
     public function setForeign($className, $records) {
         $context = $this->_getContext();
         $foreignClass = Helper::qualifyClassName($className);
@@ -512,11 +578,19 @@ abstract class Record
 
 
     ////////// Magic
-
+    /**
+     * @param string $fieldName
+     * @return mixed|null
+     */
     public function __get($fieldName) {
         return $this->get($fieldName);
     }
 
+    /**
+     * @param string $fieldName
+     * @param $value
+     * @throws RecordsManException
+     */
     public function __set($fieldName, $value) {
         $context = $this->_getContext();
         $msg = "Field {$context}::{$fieldName} was not declared as public (use TPublicFields to declare public fields)";
@@ -525,7 +599,9 @@ abstract class Record
 
 
     ////////// Loader related methods
-
+    /**
+     * @param Loader $loader
+     */
     public static function setLoader(Loader $loader) {
         self::$_loader = $loader;
     }
@@ -555,7 +631,9 @@ abstract class Record
 
 
     ////////// Class meta manipulation methods
-
+    /**
+     * @return array
+     */
     final public static function getMetaData() {
         $called = get_called_class();
         $tableName = isset(static::$tableName) ? static::$tableName : Helper::extractTableNameFromClassName($called);
@@ -578,6 +656,9 @@ abstract class Record
         ];
     }
 
+    /**
+     * @return array
+     */
     final public static function getDefaultTriggersList() {
         return [
             self::SAVE,
@@ -591,6 +672,9 @@ abstract class Record
         ];
     }
 
+    /**
+     * @return string
+     */
     public function getQualifiedClassname() {
         return $this->_getContext();
     }
