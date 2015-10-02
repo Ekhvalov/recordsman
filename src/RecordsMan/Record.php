@@ -299,7 +299,7 @@ abstract class Record
     /**
      * @param string $fieldNameOrFieldsArray
      * @param null|mixed $value
-     * @return Record
+     * @return static
      * @throws RecordsManException
      */
     protected function set($fieldNameOrFieldsArray, $value = null) {
