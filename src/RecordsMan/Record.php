@@ -431,7 +431,7 @@ abstract class Record
             }
             $sqlParams = [];
             $sql = "UPDATE `{$tableName}` SET ";
-            foreach ($this->_changed as $fieldName => $value) {
+            foreach ($this->_getChangedOwnFields() as $fieldName => $value) {
                 $sql.= "`{$fieldName}`=?,";
                 $sqlParams[] = $value;
             }
@@ -450,7 +450,7 @@ abstract class Record
         if ($this->callTrigger(self::SAVE_CREATE, [$this->_changed]) === false) {
             return $this;
         }
-        self::getAdapter()->insert($tableName, $this->_changed);
+        self::getAdapter()->insert($tableName, $this->_getChangedOwnFields());
         $this->_fields['id'] = self::getAdapter()->getLastInsertId();
         $this->_updateRelatedCounters();
         $this->callTrigger(self::SAVED, [$changedKeys]);
@@ -797,5 +797,15 @@ abstract class Record
         }
         $this->_changed = [];
         return $this;
+    }
+
+    private function _getChangedOwnFields() {
+        $fields = [];
+        foreach ($this->_changed as $key => $v) {
+            if ($this->hasOwnField($key)) {
+                $fields[$key] = $v;
+            }
+        }
+        return $fields;
     }
 }
