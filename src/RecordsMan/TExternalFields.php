@@ -52,16 +52,14 @@ trait TExternalFields
         return self::$_foreignKey;
     }
 
-    private function _saveExternalFields() {
+    protected function _saveExternalFields() {
         foreach ($this->_externalFieldsChanged as $tableName => $fieldsValues) {
             $sql = $this->_getInsertSql($tableName, array_keys($fieldsValues));
             /** @var Record|TExternalFields $this */
             $params = [":{$this->_getTableForeignKey($tableName)}" => $this->id];
             foreach ($fieldsValues as $placeholder => $value) {
                 $params[":{$placeholder}"] = $value;
-            }
-            foreach ($fieldsValues as $placeholder => $value) {
-                $params[":_{$placeholder}"] = $value;
+                $params[":_{$placeholder}"] = $value; // for "ON DUPLICATE"
             }
             Record::getAdapter()->query($sql, $params);
             unset($this->_externalFieldsChanged[$tableName]);
@@ -92,7 +90,7 @@ trait TExternalFields
         return self::$_tableForeignKey[$tableName];
     }
 
-    private function _deleteExternalFields($id) {
+    protected function _deleteExternalFields($id) {
         foreach (self::$_tableForeignKey as $tableName => $foreignKey) {
             $sql = "DELETE FROM `{$tableName}` WHERE `{$foreignKey}`=? LIMIT 1";
             Record::getAdapter()->query($sql, [$id]);
