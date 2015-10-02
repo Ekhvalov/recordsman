@@ -415,47 +415,10 @@ abstract class Record
         if (!$this->wasChanged()) {
             return $this;
         }
-        $thisId = $this->get('id');
-        $context = $this->_getContext();
-        $tableName = self::getLoader()->getClassTableName($context);
         if ($testRelations) {
             $this->_checkForeignKeys();
         }
-        if ($thisId) {
-            // updating existing entry
-            if ($this->hasOwnField('updated_at')) {
-                $this->_changed['updated_at'] = time();
-            }
-            if ($this->callTrigger(self::SAVE_UPDATE, [$changedKeys]) === false) {
-                return $this;
-            }
-            $sqlParams = [];
-            $sql = "UPDATE `{$tableName}` SET ";
-            foreach ($this->_getChangedOwnFields() as $fieldName => $value) {
-                $sql.= "`{$fieldName}`=?,";
-                $sqlParams[] = $value;
-            }
-            $sql = rtrim($sql, ',');
-            $sql.= " WHERE `id`={$thisId} LIMIT 1";
-            self::getAdapter()->query($sql, $sqlParams);
-            $this->_updateRelatedCounters();
-            $this->callTrigger(self::SAVED, [$changedKeys]);
-            $this->callTrigger(self::SAVE_UPDATED, [$changedKeys]);
-            return $this->_applyChanges();
-        }
-        // creating new entry
-        if ($this->hasOwnField('created_at')) {
-            $this->_changed['created_at'] = time();
-        }
-        if ($this->callTrigger(self::SAVE_CREATE, [$this->_changed]) === false) {
-            return $this;
-        }
-        self::getAdapter()->insert($tableName, $this->_getChangedOwnFields());
-        $this->_fields['id'] = self::getAdapter()->getLastInsertId();
-        $this->_updateRelatedCounters();
-        $this->callTrigger(self::SAVED, [$changedKeys]);
-        $this->callTrigger(self::SAVE_CREATED, [$changedKeys]);
-        return $this->_applyChanges();
+        return $this->get('id') ? $this->_saveUpdate() : $this->_saveCreate();
     }
 
     /**
@@ -698,6 +661,57 @@ abstract class Record
             $this->_context = Helper::qualifyClassName(get_class($this));
         }
         return $this->_context;
+    }
+
+    private function _saveUpdate() {
+        $context = $this->_getContext();
+        $tableName = self::getLoader()->getClassTableName($context);
+        $changedKeys = array_keys($this->_changed);
+        if ($this->hasOwnField('updated_at')) {
+            $this->_changed['updated_at'] = time();
+        }
+        if ($this->callTrigger(self::SAVE_UPDATE, [$changedKeys]) === false) {
+            return $this;
+        }
+        $chandedOwnFields = $this->_getChangedOwnFields();
+        if (!empty($chandedOwnFields)) {
+            $sqlPairs = array_map(
+                function($key) {
+                    return "`{$key}`=?";
+                },
+                array_keys($chandedOwnFields)
+            );
+            $sql = sprintf(
+                'UPDATE `%s` SET %s WHERE `id`=%d LIMIT 1',
+                $tableName,
+                implode(', ', $sqlPairs),
+                $this->get('id')
+            );
+            self::getAdapter()->query($sql, array_values($chandedOwnFields));
+        }
+        $this->_updateRelatedCounters();
+        $this->callTrigger(self::SAVED, [$changedKeys]);
+        $this->callTrigger(self::SAVE_UPDATED, [$changedKeys]);
+        return $this->_applyChanges();
+    }
+
+    private function _saveCreate() {
+        $context = $this->_getContext();
+        $tableName = self::getLoader()->getClassTableName($context);
+        $changedKeys = array_keys($this->_changed);
+        // creating new entry
+        if ($this->hasOwnField('created_at')) {
+            $this->_changed['created_at'] = time();
+        }
+        if ($this->callTrigger(self::SAVE_CREATE, [$this->_changed]) === false) {
+            return $this;
+        }
+        self::getAdapter()->insert($tableName, $this->_getChangedOwnFields());
+        $this->_fields['id'] = self::getAdapter()->getLastInsertId();
+        $this->_updateRelatedCounters();
+        $this->callTrigger(self::SAVED, [$changedKeys]);
+        $this->callTrigger(self::SAVE_CREATED, [$changedKeys]);
+        return $this->_applyChanges();
     }
 
     private function _deleteRelatedRecords() {

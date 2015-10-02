@@ -172,7 +172,7 @@ class MySQLAdapter implements IDBAdapter
         $keys = array_keys($values);
         $vals = array_values($values);
         $sql = "INSERT INTO `{$table}` ";
-        if (!is_integer($keys[0])) {
+        if (isset($keys[0]) && !is_integer($keys[0])) {
             $keys = array_map(function($field) {
                 return "`{$field}`";
             }, $keys);
