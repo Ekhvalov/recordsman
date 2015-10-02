@@ -1,6 +1,7 @@
 <?php
-namespace RecordsMan;
+namespace RecordsMan\Tests;
 
+use RecordsMan\TExternalFields;
 use Test\ItemExt;
 
 class TExternalFieldsTest extends DBConnected_TestCase

@@ -1,5 +1,5 @@
 <?php
-namespace RecordsMan;
+namespace RecordsMan\Tests;
 
 use Test\ItemHeir;
 

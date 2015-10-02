@@ -1,5 +1,9 @@
 <?php
-namespace RecordsMan;
+namespace RecordsMan\Tests;
+use RecordsMan\RecordSet;
+use Test\Item;
+use Test\SubItem;
+
 require_once __DIR__ . DIRECTORY_SEPARATOR . 'DBConnected_TestCase.php';
 
 /**
@@ -7,7 +11,6 @@ require_once __DIR__ . DIRECTORY_SEPARATOR . 'DBConnected_TestCase.php';
  */
 class RecordSetTest extends DBConnected_TestCase
 {
-
     /**
      * @covers RecordsMan\RecordSet::create
      */
@@ -39,12 +42,12 @@ class RecordSetTest extends DBConnected_TestCase
      */
     public function testCreateFromForeign()
     {
-        $item = \Test\Item::load(1);
+        $item = Item::load(1);
         $subitems = RecordSet::createFromForeign($item, '\Test\SubItem');
         $this->assertInstanceOf('\RecordsMan\RecordSet', $subitems);
         $this->assertEquals(2, $subitems->count());
         $this->setExpectedException('RecordsMan\RecordsManException', '', 50);
-        $unrelated = RecordSet::createFromForeign($item, '\Test\SubSubItem');
+        RecordSet::createFromForeign($item, '\Test\SubSubItem');
     }
 
     /**
@@ -65,13 +68,15 @@ class RecordSetTest extends DBConnected_TestCase
      */
     public function testAdd()
     {
-        $item = \Test\Item::load(1);
+        /** @var Item $item */
+        $item = Item::load(1);
         $subsCount = $item->subItems->count();
-        $item->subItems->add(\Test\SubItem::create([
+        $item->subItems->add(SubItem::create([
             'title' => 'New subitem'
         ]));
         $this->assertEquals($subsCount + 1, $item->subItems->count());
-        $createdItem = \Test\SubItem::findFirst(null, ['id' => 'DESC']);
+        /** @var SubItem $createdItem */
+        $createdItem = SubItem::findFirst(null, ['id' => 'DESC']);
         $this->assertEquals($createdItem->item_id, $item->id);
         $this->assertEquals('New subitem', $createdItem->title);
         //TODO: Test counters updating, through relations, etc.
@@ -93,6 +98,7 @@ class RecordSetTest extends DBConnected_TestCase
         }
         // Callback mode test
         $filteredSet = $set->filter(function() {
+            /** @var \Test\Item $this */
             return $this->parent_id == 0;
         });
         $this->assertEquals(2, $filteredSet->count());
