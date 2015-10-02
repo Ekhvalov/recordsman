@@ -1,6 +1,8 @@
 <?php
-namespace RecordsMan;
+namespace RecordsMan\Tests;
 
+use RecordsMan\Condition;
+use RecordsMan\Record;
 use \Test\Item;
 use \Test\SubItem;
 use \Test\SubSubItem;
@@ -106,6 +108,7 @@ class RecordTest extends DBConnected_TestCase
      * @covers RecordsMan\Record::get
      */
     public function testGet() {
+        /** @var Item $existingItem */
         $existingItem = Item::findFirst('id!0', ['id' => 'DESC']);
         $this->assertEquals(7, $existingItem->get('id'));
         //TODO: unexisting fields getting

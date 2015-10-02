@@ -1,5 +1,10 @@
 <?php
-namespace RecordsMan;
+namespace RecordsMan\Tests;
+
+use RecordsMan\Loader;
+use RecordsMan\MySQLAdapter;
+use RecordsMan\MySQLDumbParser;
+use RecordsMan\Record;
 
 abstract class DBConnected_TestCase extends \PHPUnit_Framework_TestCase
 {

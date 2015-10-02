@@ -2,7 +2,6 @@
 namespace Test;
 
 use \RecordsMan\Record;
-use \RecordsMan\RecordSet;
 use \RecordsMan\TExternalFields;
 
 /**
@@ -12,9 +11,13 @@ use \RecordsMan\TExternalFields;
  * @property int $item_id
  * @property int $subitems_count
  * @property string $title
- * @property RecordSet $itemsRelations
- * @property RecordSet $relatedItems
  * @property int $setter_test
+ *
+ * relations
+ * @property-read \RecordsMan\RecordSet $items
+ * @property-read \RecordsMan\RecordSet $subItems
+ * @property-read \RecordsMan\RecordSet $relatedItems
+ * @property-read \RecordsMan\RecordSet $itemsRelations
  */
 class Item extends Record
 {
@@ -66,6 +69,10 @@ class Item extends Record
  * @package Test
  * @property int $id
  * @property Item $item
+ * @property-read int $item_id
+ *
+ * relations
+ * @property-read \RecordsMan\RecordSet $subSubItems
  */
 class SubItem extends Record
 {
@@ -103,6 +110,13 @@ class SubSubItem extends Record
     ];
 }
 
+/**
+ * Class RelatedItem
+ * @package Test
+ *
+ * relations
+ * @property-read \RecordsMan\RecordSet $itemsRelations
+ */
 class RelatedItem extends Record
 {
 
@@ -123,13 +137,13 @@ class ItemsRelation extends Record
 /**
  * Class ItemExt
  * @package Test
- * @property string $title
- * @property string $city_name
- * @property string $city_population
- * @property int $sku
- * @property float $length
- * @property float $width
- * @property float $height
+ * @property-read string $title
+ * @property-read string $city_name
+ * @property-read string $city_population
+ * @property-read int $sku
+ * @property-read float $length
+ * @property-read float $width
+ * @property-read float $height
  */
 class ItemExt extends Record
 {
