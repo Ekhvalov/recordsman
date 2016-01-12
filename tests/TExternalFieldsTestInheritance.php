@@ -1,6 +1,7 @@
 <?php
 namespace RecordsMan\Tests;
 
+use Test\ExtendedDoc;
 use Test\ItemHeir;
 
 class TExternalFieldsTestInheritance extends DBConnected_TestCase
@@ -73,5 +74,26 @@ class TExternalFieldsTestInheritance extends DBConnected_TestCase
         );
         $this->setExpectedException('\RecordsMan\RecordsManException');
         ItemHeir::load(1);
+    }
+
+    public function testComposedKeys_Get() {
+        /** @var ExtendedDoc $doc */
+        $doc = ExtendedDoc::load(1);
+        $this->assertEquals('Meta data', $doc->meta);
+    }
+
+    public function testComposedKeys_Set() {
+        /** @var ExtendedDoc $doc */
+        $doc = ExtendedDoc::load(1);
+        $this->assertEquals('Meta data', $doc->meta);
+        $doc->setMeta('New meta')->save();
+        $doc = ExtendedDoc::load(1);
+        $this->assertEquals('New meta', $doc->meta);
+    }
+
+    public function testComposedKeys_Drop() {
+        ExtendedDoc::load(1)->drop();
+        $this->assertFalse(self::$adapter->fetchRow("SELECT * FROM `documents` WHERE `id`=1"));
+        $this->assertFalse(self::$adapter->fetchRow("SELECT * FROM `doc_meta` WHERE `doc_id`=1"));
     }
 }

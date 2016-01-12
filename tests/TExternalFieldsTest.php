@@ -2,19 +2,20 @@
 namespace RecordsMan\Tests;
 
 use RecordsMan\TExternalFields;
+use Test\Doc;
 use Test\ItemExt;
 
 class TExternalFieldsTest extends DBConnected_TestCase
 {
     public function testAddExternalField() {
         $this->assertClassHasStaticAttribute('_fieldTable', '\Test\ItemExt');
-        $this->assertClassHasStaticAttribute('_tableForeignKey', '\Test\ItemExt');
+        $this->assertClassHasStaticAttribute('_tableForeignKeys', '\Test\ItemExt');
         $itemExtReflection = new \ReflectionClass('\Test\ItemExt');
         $fieldsReflection = $itemExtReflection->getProperty('_fieldTable');
         $fieldsReflection->setAccessible(true);
         $this->assertTrue(is_array($fieldsReflection->getValue()));
         $this->assertCount(0, $fieldsReflection->getValue());
-        $tablesReflection = $itemExtReflection->getProperty('_tableForeignKey');
+        $tablesReflection = $itemExtReflection->getProperty('_tableForeignKeys');
         $tablesReflection->setAccessible(true);
         $this->assertTrue(is_array($tablesReflection->getValue()));
         $this->assertCount(0, $tablesReflection->getValue());
@@ -116,5 +117,26 @@ class TExternalFieldsTest extends DBConnected_TestCase
         $itemExt->drop();
         $this->assertFalse(self::$adapter->fetchRow("SELECT * FROM `item_city` WHERE `item_ext_id`=1"));
         $this->assertFalse(self::$adapter->fetchRow("SELECT * FROM `item_properties` WHERE `item_ext_id`=1"));
+    }
+
+    public function testComposedKeys_Get() {
+        $doc = Doc::load(1);
+        $this->assertEquals('Doc 1', $doc->title);
+        $this->assertEquals('docx', $doc->type);
+        $this->assertEquals('Description of Doc #1', $doc->description);
+    }
+
+    public function testComposedKeys_Set() {
+        /** @var Doc $doc */
+        $doc = Doc::load(1);
+        $doc->setDescription('New description')->save();
+        $doc = Doc::load(1);
+        $this->assertEquals('New description', $doc->description);
+    }
+
+    public function testComposedKeys_Drop() {
+        Doc::load(1)->drop();
+        $this->assertFalse(self::$adapter->fetchRow("SELECT * FROM `documents` WHERE `id`=1"));
+        $this->assertFalse(self::$adapter->fetchRow("SELECT * FROM `doc_properties` WHERE `doc_id`=1"));
     }
 }

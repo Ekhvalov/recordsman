@@ -160,3 +160,48 @@ CREATE TABLE `item_heir_ext` (
   PRIMARY KEY (`id`),
   UNIQUE KEY (`item_base_id`)
 ) ENGINE=MyISAM  DEFAULT CHARSET=utf8;
+
+# Composed foreign keys
+DROP TABLE IF EXISTS `documents`;
+CREATE TABLE `documents` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `title` VARCHAR(255) NOT NULL,
+  `type` VARCHAR(255) NOT NULL,
+  `pages_count` MEDIUMINT(9) NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`)
+) ENGINE=MyISAM  DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
+
+INSERT INTO `documents` VALUES
+  (1, 'Doc 1', 'docx', 6),
+  (2, 'Doc 2', 'doc', 4),
+  (3, 'Doc 3', 'xml', 1),
+  (4, 'Doc 4', 'pdf', 7);
+
+DROP TABLE IF EXISTS `doc_properties`;
+CREATE TABLE `doc_properties` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `doc_id` INT(11) NOT NULL,
+  `doc_type` VARCHAR(255) NOT NULL,
+  `description` VARCHAR(255) NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `doc_id_doc_type` (`doc_id`, `doc_type`)
+) ENGINE=MyISAM  DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
+
+INSERT INTO `doc_properties` VALUES
+  (1, 1, 'docx', 'Description of Doc #1'),
+  (2, 2, 'doc', 'Description of Doc #2'),
+  (3, 3, 'xml', 'Description of Doc #3'),
+  (4, 4, 'pdf', 'Description of Doc #4');
+
+DROP TABLE IF EXISTS `doc_meta`;
+CREATE TABLE `doc_meta` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `doc_id` INT(11) NOT NULL,
+  `doc_type` VARCHAR(255) NOT NULL,
+  `meta` TEXT,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `doc_id_doc_type` (`doc_id`, `doc_type`)
+) ENGINE=MyISAM  DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
+
+INSERT INTO `doc_meta` VALUES
+  (1, 1, 'docx', 'Meta data');
