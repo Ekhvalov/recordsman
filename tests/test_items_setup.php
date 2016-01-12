@@ -256,3 +256,65 @@ class ItemHeir extends ItemBase
         return $this->set('height', $height);
     }
 }
+
+/**
+ * Class Doc
+ * @package Test
+ *
+ * @property-read string $type
+ * @property-read string $title
+ * @property-read int $id
+ * @property-read string $description
+ */
+class Doc extends Record
+{
+    protected static $tableName = 'documents';
+
+    use TExternalFields;
+
+    public static function init() {
+        self::addExternalField('description', 'doc_properties', [
+            'doc_id' => true,
+            'doc_type' => function (Doc $doc) {
+                return $doc->type;
+            }
+        ]);
+    }
+
+    /**
+     * @param string $newDescription
+     * @return static|Doc|self
+     * @throws \RecordsMan\RecordsManException
+     */
+    public function setDescription($newDescription) {
+        return $this->set('description', $newDescription);
+    }
+}
+
+/**
+ * Class ExtendedDoc
+ * @package Test
+ *
+ * @property-read string $meta
+ */
+class ExtendedDoc extends Doc
+{
+    public static function init() {
+        parent::init();
+        self::addExternalField('meta', 'doc_meta', [
+            'doc_id' => true,
+            'doc_type' => function (Doc $doc) {
+                return $doc->type;
+            }
+        ]);
+    }
+
+    /**
+     * @param string $meta
+     * @return static|Doc|self
+     * @throws \RecordsMan\RecordsManException
+     */
+    public function setMeta($meta) {
+        return $this->set('meta', $meta);
+    }
+}
