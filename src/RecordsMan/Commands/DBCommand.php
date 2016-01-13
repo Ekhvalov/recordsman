@@ -7,6 +7,7 @@ use WP\App\Console\ArgDef;
 use WP\App\Console\CommandArgs;
 use RecordsMan\MySQLDumbParser;
 use RecordsMan\SqlFileMigrator;
+use RecordsMan\IDBAdapter;
 
 /**
  * Manipulates with database schema.
@@ -21,7 +22,7 @@ class DBCommand extends ActionCommand {
 
     private $_sources = [];
 
-    /** @var \RecordsMan\IDBAdapter $_adapter */
+    /** @var IDBAdapter $_adapter */
     private $_adapter = null;
 
 
@@ -36,12 +37,12 @@ class DBCommand extends ActionCommand {
     }
 
     public static function requires() {
-        return ['db.adapter', 'db.migrate.sources'];
+        return [IDBAdapter::class, 'db.migrate.sources'];
     }
 
     public function init($requirements) {
         $this->_sources = $requirements['db.migrate.sources'];
-        $this->_adapter = $requirements['db.adapter'];
+        $this->_adapter = $requirements[IDBAdapter::class];
     }
 
     public function mainAction(CommandArgs $_) {
