@@ -93,7 +93,7 @@ trait TExternalFields
                 $params[":{$placeholder}"] = $value;
                 $params[":_{$placeholder}"] = $value; // for "ON DUPLICATE"
             }
-            Record::getAdapter()->query($sql, $params);
+            self::getAdapter()->query($sql, $params);
             unset($this->_externalFieldsChanged[$tableName]);
         }
     }
@@ -132,7 +132,11 @@ trait TExternalFields
         return rtrim($sql, 'AND');
     }
 
-    protected function _getFieldTableName($fieldName) {
+    /**
+     * @param $fieldName
+     * @return string
+     */
+    protected function _getTableNameByFieldName($fieldName) {
         return self::$_fieldTable[$fieldName];
     }
 
@@ -145,11 +149,18 @@ trait TExternalFields
     }
 
     protected function _deleteExternalFields() {
-        foreach (self::$_tableForeignKeys as $tableName => $foreignKey) {
-            $sql = "DELETE FROM `{$tableName}` ";
-            $sql.= "WHERE {$this->_getForeignKeySql($tableName)}  LIMIT 1";
-            Record::getAdapter()->query($sql, $this->_getForeignKeyValue($tableName));
+        foreach (self::$_tableForeignKeys as $tableName => $_) {
+            $this->_deleteExternalFieldsFromTable($tableName);
         }
+    }
+
+    /**
+     * @param string $tableName
+     */
+    protected function _deleteExternalFieldsFromTable($tableName) {
+        $sql = "DELETE FROM `{$tableName}` ";
+        $sql.= "WHERE {$this->_getForeignKeySql($tableName)}  LIMIT 1";
+        self::getAdapter()->query($sql, $this->_getForeignKeyValue($tableName));
     }
 
     /**
@@ -182,7 +193,7 @@ function _createGetter($fieldName) {
     return function() use ($fieldName) {
         /** @var Record|TExternalFields $this */
         if (!isset($this->_externalFieldsCache[$fieldName])) {
-            $tableName = $this->_getFieldTableName($fieldName);
+            $tableName = $this->_getTableNameByFieldName($fieldName);
             $sql = "SELECT `{$fieldName}` FROM `{$tableName}` ";
             $sql.= "WHERE {$this->_getForeignKeySql($tableName)}";
             $result = $this->getAdapter()
@@ -197,7 +208,7 @@ function _createSetter($fieldName) {
     return function($value) use ($fieldName) {
         /** @var Record|TExternalFields $this */
         $this->_externalFieldsCache[$fieldName] = $value;
-        $tableName = $this->_getFieldTableName($fieldName);
+        $tableName = $this->_getTableNameByFieldName($fieldName);
         $this->_externalFieldsChanged[$tableName][$fieldName] = $value;
         return $value;
     };
