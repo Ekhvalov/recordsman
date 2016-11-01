@@ -5,6 +5,7 @@ use WP\App\Console\ActionCommand;
 use WP\App\Console\ArgList;
 use WP\App\Console\ArgDef;
 use WP\App\Console\CommandArgs;
+use WP\App\Console\TLoggingCommand;
 use RecordsMan\MySQLDumbParser;
 use RecordsMan\SqlFileMigrator;
 use RecordsMan\IDBAdapter;
@@ -19,6 +20,8 @@ use RecordsMan\IDBAdapter;
  * drop    - clear all tables
  */
 class DBCommand extends ActionCommand {
+
+    use TLoggingCommand;
 
     private $_sources = [];
 
@@ -43,10 +46,11 @@ class DBCommand extends ActionCommand {
     public function init($requirements) {
         $this->_sources = $requirements['db.migrate.sources'];
         $this->_adapter = $requirements[IDBAdapter::class];
+        $this->willWriteLogs();
     }
 
     public function mainAction(CommandArgs $_) {
-        print("Use one of specified actions: migrate, drop\n");
+        throw new \RuntimeException("Use one of specified actions: migrate, drop");
     }
 
     public function migrateAction(CommandArgs $args) {
@@ -78,16 +82,13 @@ class DBCommand extends ActionCommand {
         $migrator->setSourceDir($path);
         $migrator->setMigrationTab($tabName);
         $info = $migrator->migrate($version ?: false);
+        $this->log("Source %s: performed queries: %d", $name, $info['queries']);
+        $this->log("Source %s: current version: %d", $name, $info['version']);
         if ($info['success']) {
-            print("Source {$name} is up to date. Current version: {$info['version']}.\n");
-            print("Performed queries: {$info['queries']}.\n");
+            $this->log("Source %s: up to date", $name);
             return 0;
         }
-        print("Error occurs while migrating source {$name}:\n");
-        print("{$info['error']}\n");
-        print('***************************************');
-        print("Performed queries: {$info['queries']}.\n");
-        print("Current version: {$info['version']}.\n");
+        $this->logError("Error occurs while migrating source %s: %s", $name, $info['error']);
         return 33;
     }
 
