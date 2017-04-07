@@ -71,6 +71,7 @@ class MySQLAdapter implements IDBAdapter
      * @param null $params
      * @param bool $assoc
      * @return mixed
+     * @throws RecordsManException
      */
     public function fetchRow($sql, $params = null, $assoc = true) {
         /** @var \PDOStatement $stmt */
@@ -84,6 +85,7 @@ class MySQLAdapter implements IDBAdapter
      * @param null $params
      * @param bool $assoc
      * @return array
+     * @throws RecordsManException
      */
     public function fetchRows($sql, $params = null, $assoc = true) {
         /** @var \PDOStatement $stmt */
@@ -97,6 +99,7 @@ class MySQLAdapter implements IDBAdapter
      * @param null $params
      * @param string $className
      * @return mixed
+     * @throws RecordsManException
      */
     public function fetchObject($sql, $params = null, $className = 'stdClass') {
         /** @var \PDOStatement $stmt */
@@ -109,7 +112,8 @@ class MySQLAdapter implements IDBAdapter
      * @param string $sql
      * @param null $params
      * @param string $className
-     * @return mixed
+     * @return array
+     * @throws RecordsManException
      */
     public function fetchObjects($sql, $params = null, $className = 'stdClass') {
         /** @var \PDOStatement $stmt */
@@ -122,7 +126,8 @@ class MySQLAdapter implements IDBAdapter
      * @param string $sql
      * @param null $params
      * @param int $columnNum
-     * @return mixed
+     * @return array
+     * @throws RecordsManException
      */
     public function fetchColumnArray($sql, $params = null, $columnNum = 0) {
         /** @var \PDOStatement $stmt */
@@ -135,6 +140,7 @@ class MySQLAdapter implements IDBAdapter
      * @param string $sql
      * @param null $params
      * @return mixed
+     * @throws RecordsManException
      */
     public function fetchSingleValue($sql, $params = null) {
         /** @var \PDOStatement $stmt */
@@ -144,7 +150,7 @@ class MySQLAdapter implements IDBAdapter
     }
 
     /**
-     * @param $sql
+     * @param string $sql
      * @param null $params
      * @return int
      * @throws RecordsManException
@@ -160,8 +166,8 @@ class MySQLAdapter implements IDBAdapter
     }
 
     /**
-     * @param $table
-     * @param $values
+     * @param string $table
+     * @param array $values
      * @return bool|string
      * @throws RecordsManException
      */
@@ -190,24 +196,43 @@ class MySQLAdapter implements IDBAdapter
     }
 
     /**
-     * @return bool
+     * @throws RecordsManException
      */
     public function beginTransaction() {
-        return $this->_db->beginTransaction();
+        if (!$this->_db->beginTransaction()) {
+            throw new RecordsManException(
+                $this->_getPdoErrorAsString('Transaction initialization error')
+            );
+        }
     }
 
     /**
      * @return bool
+     */
+    public function inTransaction() {
+        return $this->_db->inTransaction();
+    }
+
+    /**
+     * @throws RecordsManException
      */
     public function commit() {
-        return $this->_db->commit();
+        if (!$this->_db->commit()) {
+            throw new RecordsManException(
+                $this->_getPdoErrorAsString('Transaction commit error')
+            );
+        }
     }
 
     /**
-     * @return bool
+     * @throws RecordsManException
      */
     public function rollBack() {
-        return $this->_db->rollBack();
+        if (!$this->_db->rollBack()) {
+            throw new RecordsManException(
+                $this->_getPdoErrorAsString('Transaction rollback error')
+            );
+        }
     }
 
     /**
@@ -278,5 +303,19 @@ class MySQLAdapter implements IDBAdapter
         }
         $this->_queriesLog[] = ['query' => $sql, 'params' => $params];
         return true;
+    }
+
+    /**
+     * @param string $errorPrefix
+     * @return string
+     */
+    private function _getPdoErrorAsString($errorPrefix = 'Mysql error') {
+        $error = $this->_db->errorInfo();
+        return sprintf(
+            '%s: %s. Error code: %s',
+            $errorPrefix,
+            $error[2],
+            !is_null($error[0]) ? "{$error[1]}. SQL state: {$error[0]}" : $error[1]
+        );
     }
 }
