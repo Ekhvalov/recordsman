@@ -380,10 +380,14 @@ abstract class Record
 
     ////////// Creating / deleting/ updating
     /**
+     * @param null|string $fieldName
      * @return bool
      */
-    public function wasChanged() {
-        return !$this->id || !empty($this->_changed);
+    public function wasChanged($fieldName = null) {
+        if (!$this->id) {
+            return true;
+        }
+        return !is_null($fieldName) ? isset($this->_changed[$fieldName]) : !empty($this->_changed);
     }
 
     public function reload() {
