@@ -408,10 +408,9 @@ abstract class Record
     }
 
     /**
-     * @param bool $testRelations
      * @return static
      */
-    public function save($testRelations = true) {
+    public function save() {
         $changedKeys = array_keys($this->_changed);
         if ($this->callTrigger(self::SAVE, [$changedKeys]) === false) {
             return $this;
@@ -419,9 +418,7 @@ abstract class Record
         if (!$this->wasChanged()) {
             return $this;
         }
-        if ($testRelations) {
-            $this->_checkForeignKeys();
-        }
+        $this->_checkForeignKeys();
         return $this->get('id') ? $this->_saveUpdate() : $this->_saveCreate();
     }
 
@@ -779,12 +776,17 @@ abstract class Record
                 continue ;
             }
             $relationParams = $this->getRelationParamsWith($className);
-            $foreignItemId = $this->get($relationParams['foreignKey']);
-            try {
-                $className::load($foreignItemId);
-            } catch (\Exception $e) {
-                $msg = "Related item of class {$className} (#{$foreignItemId}) are not exists";
-                throw new RecordsManException($msg, 85);
+            if ($this->wasChanged($relationParams['foreignKey'])) {
+                $foreignItemId = $this->get($relationParams['foreignKey']);
+                try {
+                    $className::load($foreignItemId);
+                } catch (\Exception $e) {
+                    throw new RecordsManException(sprintf(
+                        'Related item of class %s (#%d) are not exists',
+                        $className,
+                        $foreignItemId
+                    ), 85);
+                }
             }
         }
     }
