@@ -90,6 +90,7 @@ interface IDBAdapter
     public function getLastInsertId();
 
     /**
+     * @return bool
      * @throws RecordsManException
      */
     public function beginTransaction();
