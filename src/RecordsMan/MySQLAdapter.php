@@ -196,14 +196,19 @@ class MySQLAdapter implements IDBAdapter
     }
 
     /**
+     * @return bool
      * @throws RecordsManException
      */
     public function beginTransaction() {
-        if (!$this->_db->beginTransaction()) {
-            throw new RecordsManException(
-                $this->_getPdoErrorAsString('Transaction initialization error')
-            );
+        if ($this->_db->inTransaction()) {
+            return false;
         }
+        if ($this->_db->beginTransaction()) {
+            return true;
+        }
+        throw new RecordsManException(
+            $this->_getPdoErrorAsString('Transaction initialization error')
+        );
     }
 
     /**
